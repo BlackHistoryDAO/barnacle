@@ -1,6 +1,14 @@
 # Octopus Appchain Template
 
 # TODO
+
+### Install Rust Environment
+
+```
+curl https://getsubstrate.io/ -sSf | bash -s - --fast
+```
+
+
 ```
 $ cargo build --release
 $ ./target/release/appchain-barnacle --dev --tmp
