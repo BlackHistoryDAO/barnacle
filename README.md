@@ -2,7 +2,8 @@
 
 # TODO
 ```
-$ cargo build
-$ ./target/debug/appchain-barnacle purge-chain --dev
-$ ./target/debug/appchain-barnacle --dev --enable-offchain-indexing true
+$ cargo build --release
+$ ./target/release/appchain-barnacle --dev --tmp
+$ ./target/release/appchain-barnacle purge-chain --dev
+$ ./target/release/appchain-barnacle --dev --enable-offchain-indexing true
 ```
