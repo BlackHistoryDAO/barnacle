@@ -32,11 +32,15 @@ pub mod pallet {
 	type BalanceOf<T> = <<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
 
 	#[derive(Clone, Encode, Decode, PartialEq, Debug, TypeInfo, Eq)]
-	pub struct Document {
+	#[scale_info(skip_type_params(T))]
+	pub struct Document<T:Config> {
+		pub uid: u64,
+		pub creator: T::AccountId,
 		pub title: Vec<u8>,
 		pub description: Vec<u8>,
 		pub format: Vec<u8>,
 		pub hash: Vec<u8>,
+		pub verified: bool,
 	}
 
 	#[derive(Clone, Encode, Decode, PartialEq, Debug, TypeInfo, Eq)]
@@ -53,10 +57,18 @@ pub mod pallet {
 		pub metadata: Vec<u8>,
 	}
 
+	#[derive(Clone, Encode, Decode, PartialEq, Debug, TypeInfo, Eq)]
+	#[scale_info(skip_type_params(T))]
+	pub struct Contributor<T:Config> {
+		pub address: T::AccountId,
+		pub metadata: Vec<u8>,
+	}
+
 	pub enum Roles {
-		Admin,
-		Museum,
-		Collector,
+		CouncilRole,
+		MuseumRole,
+		CollectorRole,
+		ContributorRole,
 	}
 
 	/// Configure the pallet by specifying the parameters and types on which it depends.
@@ -95,7 +107,7 @@ pub mod pallet {
 		_,
 		Blake2_128Concat,
 		u64,
-		Document,
+		Document<T>,
 		OptionQuery,
 	>;
 
@@ -119,6 +131,16 @@ pub mod pallet {
 		OptionQuery,
 	>;
 
+	#[pallet::storage]
+	#[pallet::getter(fn get_contributor)]
+	pub(super) type Contributors<T:Config> = StorageMap<
+		_,
+		Blake2_128Concat,
+		T::AccountId,
+		Contributor<T>,
+		OptionQuery,
+	>;
+
 	// Pallets use events to inform users when important changes are made.
 	// https://docs.substrate.io/v3/runtime/events-and-errors
 	#[pallet::event]
@@ -126,6 +148,8 @@ pub mod pallet {
 	pub enum Event<T: Config> {
 		MuseumAdded(T::AccountId),
 		CollectorAdded(T::AccountId),
+		ContributorAdded(T::AccountId),
+		DocumentCreated(T::AccountId,u64),
 	}
 
 	// Errors inform users that something went wrong.
@@ -133,6 +157,10 @@ pub mod pallet {
 	pub enum Error<T> {
 		MuseumAlreadyExists,
 		CollectorAlreadyExists,
+		ContributorAlreadyExists,
+		NotAMuseum,
+		NotACollector,
+		NotAContributor,
 	}
 
 	// Dispatchable functions allows users to interact with the pallet and invoke state changes.
@@ -140,18 +168,95 @@ pub mod pallet {
 	// Dispatchable functions must be annotated with a weight and must return a DispatchResult.
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
-		#[pallet::weight(10_000 + T::DbWeight::get().writes(1))]
-		pub fn add_museum(origin: OriginFor<T>, museum: T::AccountId, metadata: Vec<u8>) -> DispatchResult {
+		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(4,3))]
+		pub fn add_museum(origin: OriginFor<T>, who: T::AccountId, metadata: Vec<u8>) -> DispatchResult {
 			ensure_root(origin)?;
+			ensure!(!Museums::<T>::contains_key(&who),Error::<T>::MuseumAlreadyExists);
+
+			let museum = Museum::<T> {
+				address: who.clone(),
+				metadata: metadata
+			};
+
+			Museums::<T>::insert(who.clone(),&museum);
+			Self::deposit_event(Event::MuseumAdded(who));
 
 			Ok(())
 		}
 
-		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(1,1))]
-		pub fn add_collector(origin: OriginFor<T>, collector: T::AccountId, metadata: Vec<u8>) -> DispatchResult {
+		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(4,3))]
+		pub fn add_collector(origin: OriginFor<T>, who: T::AccountId, metadata: Vec<u8>) -> DispatchResult {
 			ensure_root(origin)?;
+			ensure!(!Collectors::<T>::contains_key(&who),Error::<T>::CollectorAlreadyExists);
+
+			let collector = Collector::<T> {
+				address: who.clone(),
+				metadata: metadata
+			};
+
+			Collectors::<T>::insert(who.clone(),&collector);
+			Self::deposit_event(Event::CollectorAdded(who));
 
 			Ok(())
+		}
+
+		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(4,3))]
+		pub fn add_contributor(origin: OriginFor<T>, who: T::AccountId, metadata: Vec<u8>) -> DispatchResult {
+			ensure_root(origin)?;
+			ensure!(!Contributors::<T>::contains_key(&who),Error::<T>::ContributorAlreadyExists);
+
+
+			let contributor = Contributor::<T> {
+				address: who.clone(),
+				metadata: metadata
+			};
+
+			Contributors::<T>::insert(who.clone(),&contributor);
+			Self::deposit_event(Event::ContributorAdded(who));
+
+			Ok(())
+		}
+
+		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(4,3))]
+		pub fn create_document(origin: OriginFor<T>, title: Vec<u8>, description: Vec<u8>,
+		format: Vec<u8>, hash: Vec<u8>) -> DispatchResult {
+			let who = ensure_signed(origin)?;
+			ensure!(Self::ensure_contributor(who.clone()),Error::<T>::NotAContributor);
+
+			let uid = Self::get_total_items().checked_add(1).ok_or(ArithmeticError::Overflow)?;
+
+			let document = Document::<T> {
+				creator: who.clone(),
+				uid: uid.clone(),
+				title: title.clone(),
+				description: description.clone(),
+				format: format.clone(),
+				hash: hash.clone(),
+				verified: false
+			};
+
+			Documents::<T>::insert(uid.clone(),&document);
+			TotalItems::<T>::put(&uid);
+
+			Self::deposit_event(Event::DocumentCreated(who,uid));
+
+			Ok(())
+		}
+	}
+
+	// Helpful functions
+	impl<T: Config> Pallet<T> {
+		pub fn ensure_contributor(who: T::AccountId) -> bool {
+			let check = Contributors::<T>::contains_key(who);
+			check
+		}
+		pub fn ensure_collector(who: T::AccountId) -> bool {
+			let check = Collectors::<T>::contains_key(who);
+			check
+		}
+		pub fn ensure_museum(who: T::AccountId) -> bool {
+			let check = Museums::<T>::contains_key(who);
+			check
 		}
 	}
 }
