@@ -46,6 +46,7 @@ pub mod pallet {
 	#[derive(Clone, Encode, Decode, PartialEq, Debug, TypeInfo, Eq)]
 	#[scale_info(skip_type_params(T))]
 	pub struct Museum<T:Config> {
+		pub uid: u32,
 		pub address: T::AccountId,
 		pub metadata: Vec<u8>,
 	}
@@ -53,6 +54,7 @@ pub mod pallet {
 	#[derive(Clone, Encode, Decode, PartialEq, Debug, TypeInfo, Eq)]
 	#[scale_info(skip_type_params(T))]
 	pub struct Collector<T:Config> {
+		pub uid: u32,
 		pub address: T::AccountId,
 		pub metadata: Vec<u8>,
 	}
@@ -60,6 +62,7 @@ pub mod pallet {
 	#[derive(Clone, Encode, Decode, PartialEq, Debug, TypeInfo, Eq)]
 	#[scale_info(skip_type_params(T))]
 	pub struct Contributor<T:Config> {
+		pub uid: u32,
 		pub address: T::AccountId,
 		pub metadata: Vec<u8>,
 	}
@@ -90,6 +93,18 @@ pub mod pallet {
 	#[pallet::storage]
 	#[pallet::getter(fn get_total_transactions)]
 	pub(super) type TotalTransactions<T> = StorageValue<_, u64,ValueQuery>;
+
+	#[pallet::storage]
+	#[pallet::getter(fn get_total_contributors)]
+	pub(super) type TotalContributors<T> = StorageValue<_, u32,ValueQuery>;
+
+	#[pallet::storage]
+	#[pallet::getter(fn get_total_collectors)]
+	pub(super) type TotalCollectors<T> = StorageValue<_, u32,ValueQuery>;
+
+	#[pallet::storage]
+	#[pallet::getter(fn get_total_museums)]
+	pub(super) type TotalMuseums<T> = StorageValue<_, u32,ValueQuery>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn get_transactions_per_address)]
@@ -146,9 +161,9 @@ pub mod pallet {
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
-		MuseumAdded(T::AccountId),
-		CollectorAdded(T::AccountId),
-		ContributorAdded(T::AccountId),
+		MuseumAdded(T::AccountId,u32),
+		CollectorAdded(T::AccountId,u32),
+		ContributorAdded(T::AccountId,u32),
 		DocumentCreated(T::AccountId,u64),
 	}
 
@@ -173,13 +188,17 @@ pub mod pallet {
 			ensure_root(origin)?;
 			ensure!(!Museums::<T>::contains_key(&who),Error::<T>::MuseumAlreadyExists);
 
+			let uid = Self::get_total_museums().checked_add(1).ok_or(ArithmeticError::Overflow)?;
+
 			let museum = Museum::<T> {
+				uid: uid.clone(),
 				address: who.clone(),
 				metadata: metadata
 			};
 
 			Museums::<T>::insert(who.clone(),&museum);
-			Self::deposit_event(Event::MuseumAdded(who));
+			TotalMuseums::<T>::put(&uid);
+			Self::deposit_event(Event::MuseumAdded(who,uid));
 
 			Ok(())
 		}
@@ -189,13 +208,17 @@ pub mod pallet {
 			ensure_root(origin)?;
 			ensure!(!Collectors::<T>::contains_key(&who),Error::<T>::CollectorAlreadyExists);
 
+			let uid = Self::get_total_collectors().checked_add(1).ok_or(ArithmeticError::Overflow)?;
+
 			let collector = Collector::<T> {
+				uid: uid.clone(),
 				address: who.clone(),
 				metadata: metadata
 			};
 
 			Collectors::<T>::insert(who.clone(),&collector);
-			Self::deposit_event(Event::CollectorAdded(who));
+			TotalCollectors::<T>::put(&uid);
+			Self::deposit_event(Event::CollectorAdded(who,uid));
 
 			Ok(())
 		}
@@ -205,14 +228,17 @@ pub mod pallet {
 			ensure_root(origin)?;
 			ensure!(!Contributors::<T>::contains_key(&who),Error::<T>::ContributorAlreadyExists);
 
+			let uid = Self::get_total_contributors().checked_add(1).ok_or(ArithmeticError::Overflow)?;
 
 			let contributor = Contributor::<T> {
+				uid: uid.clone(),
 				address: who.clone(),
 				metadata: metadata
 			};
 
 			Contributors::<T>::insert(who.clone(),&contributor);
-			Self::deposit_event(Event::ContributorAdded(who));
+			TotalContributors::<T>::put(&uid);
+			Self::deposit_event(Event::ContributorAdded(who,uid));
 
 			Ok(())
 		}
@@ -258,5 +284,6 @@ pub mod pallet {
 			let check = Museums::<T>::contains_key(who);
 			check
 		}
+		
 	}
 }
