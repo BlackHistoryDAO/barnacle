@@ -61,7 +61,7 @@ pub mod pallet {
 
 	#[derive(Clone, Encode, Decode, PartialEq, Debug, TypeInfo, Eq)]
 	#[scale_info(skip_type_params(T))]
-	pub struct Contributor<T:Config> {
+	pub struct Griot<T:Config> {
 		pub uid: u32,
 		pub address: T::AccountId,
 		pub metadata: Vec<u8>,
@@ -71,7 +71,7 @@ pub mod pallet {
 		CouncilRole,
 		MuseumRole,
 		CollectorRole,
-		ContributorRole,
+		GriotRole,
 	}
 
 	/// Configure the pallet by specifying the parameters and types on which it depends.
@@ -95,8 +95,8 @@ pub mod pallet {
 	pub(super) type TotalTransactions<T> = StorageValue<_, u64,ValueQuery>;
 
 	#[pallet::storage]
-	#[pallet::getter(fn get_total_contributors)]
-	pub(super) type TotalContributors<T> = StorageValue<_, u32,ValueQuery>;
+	#[pallet::getter(fn get_total_griots)]
+	pub(super) type TotalGriots<T> = StorageValue<_, u32,ValueQuery>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn get_total_collectors)]
@@ -147,12 +147,12 @@ pub mod pallet {
 	>;
 
 	#[pallet::storage]
-	#[pallet::getter(fn get_contributor)]
-	pub(super) type Contributors<T:Config> = StorageMap<
+	#[pallet::getter(fn get_griot)]
+	pub(super) type Griots<T:Config> = StorageMap<
 		_,
 		Blake2_128Concat,
 		T::AccountId,
-		Contributor<T>,
+		Griot<T>,
 		OptionQuery,
 	>;
 
@@ -163,7 +163,7 @@ pub mod pallet {
 	pub enum Event<T: Config> {
 		MuseumAdded(T::AccountId,u32),
 		CollectorAdded(T::AccountId,u32),
-		ContributorAdded(T::AccountId,u32),
+		GriotAdded(T::AccountId,u32),
 		DocumentCreated(T::AccountId,u64),
 	}
 
@@ -172,10 +172,10 @@ pub mod pallet {
 	pub enum Error<T> {
 		MuseumAlreadyExists,
 		CollectorAlreadyExists,
-		ContributorAlreadyExists,
+		GriotAlreadyExists,
 		NotAMuseum,
 		NotACollector,
-		NotAContributor,
+		NotAGriot,
 	}
 
 	// Dispatchable functions allows users to interact with the pallet and invoke state changes.
@@ -224,21 +224,21 @@ pub mod pallet {
 		}
 
 		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(4,3))]
-		pub fn add_contributor(origin: OriginFor<T>, who: T::AccountId, metadata: Vec<u8>) -> DispatchResult {
+		pub fn add_griot(origin: OriginFor<T>, who: T::AccountId, metadata: Vec<u8>) -> DispatchResult {
 			ensure_root(origin)?;
-			ensure!(!Contributors::<T>::contains_key(&who),Error::<T>::ContributorAlreadyExists);
+			ensure!(!Griots::<T>::contains_key(&who),Error::<T>::GriotAlreadyExists);
 
-			let uid = Self::get_total_contributors().checked_add(1).ok_or(ArithmeticError::Overflow)?;
+			let uid = Self::get_total_griots().checked_add(1).ok_or(ArithmeticError::Overflow)?;
 
-			let contributor = Contributor::<T> {
+			let griot = Griot::<T> {
 				uid: uid.clone(),
 				address: who.clone(),
 				metadata: metadata
 			};
 
-			Contributors::<T>::insert(who.clone(),&contributor);
-			TotalContributors::<T>::put(&uid);
-			Self::deposit_event(Event::ContributorAdded(who,uid));
+			Griots::<T>::insert(who.clone(),&griot);
+			TotalGriots::<T>::put(&uid);
+			Self::deposit_event(Event::GriotAdded(who,uid));
 
 			Ok(())
 		}
@@ -247,7 +247,7 @@ pub mod pallet {
 		pub fn create_document(origin: OriginFor<T>, title: Vec<u8>, description: Vec<u8>,
 		format: Vec<u8>, hash: Vec<u8>) -> DispatchResult {
 			let who = ensure_signed(origin)?;
-			ensure!(Self::ensure_contributor(who.clone()),Error::<T>::NotAContributor);
+			ensure!(Self::ensure_griot(who.clone()),Error::<T>::NotAGriot);
 
 			let uid = Self::get_total_items().checked_add(1).ok_or(ArithmeticError::Overflow)?;
 
@@ -272,8 +272,8 @@ pub mod pallet {
 
 	// Helpful functions
 	impl<T: Config> Pallet<T> {
-		pub fn ensure_contributor(who: T::AccountId) -> bool {
-			let check = Contributors::<T>::contains_key(who);
+		pub fn ensure_griot(who: T::AccountId) -> bool {
+			let check = Griots::<T>::contains_key(who);
 			check
 		}
 		pub fn ensure_collector(who: T::AccountId) -> bool {
