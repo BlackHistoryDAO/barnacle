@@ -34,7 +34,6 @@ pub mod pallet {
 	#[derive(Clone, Encode, Decode, PartialEq, Debug, TypeInfo, Eq)]
 	#[scale_info(skip_type_params(T))]
 	pub struct Document<T:Config> {
-		pub uid: u64,
 		pub creator: T::AccountId,
 		pub title: Vec<u8>,
 		pub description: Vec<u8>,
@@ -45,7 +44,7 @@ pub mod pallet {
 
 	#[derive(Clone, Encode, Decode, PartialEq, Debug, TypeInfo, Eq)]
 	#[scale_info(skip_type_params(T))]
-	pub struct Museum<T:Config> {
+	pub struct Qualifier<T:Config> {
 		pub uid: u32,
 		pub address: T::AccountId,
 		pub metadata: Vec<u8>,
@@ -68,10 +67,10 @@ pub mod pallet {
 	}
 
 	pub enum Roles {
-		CouncilRole,
-		MuseumRole,
+		QualifierRole,
 		CollectorRole,
 		GriotRole,
+		VerifierRole,
 	}
 
 	/// Configure the pallet by specifying the parameters and types on which it depends.
@@ -103,8 +102,8 @@ pub mod pallet {
 	pub(super) type TotalCollectors<T> = StorageValue<_, u32,ValueQuery>;
 
 	#[pallet::storage]
-	#[pallet::getter(fn get_total_museums)]
-	pub(super) type TotalMuseums<T> = StorageValue<_, u32,ValueQuery>;
+	#[pallet::getter(fn get_total_qualifiers)]
+	pub(super) type TotalQualifiers<T> = StorageValue<_, u32,ValueQuery>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn get_transactions_per_address)]
@@ -127,12 +126,12 @@ pub mod pallet {
 	>;
 
 	#[pallet::storage]
-	#[pallet::getter(fn get_museum)]
-	pub(super) type Museums<T:Config> = StorageMap<
+	#[pallet::getter(fn get_qualifier)]
+	pub(super) type Qualifiers<T:Config> = StorageMap<
 		_,
 		Blake2_128Concat,
 		T::AccountId,
-		Museum<T>,
+		Qualifier<T>,
 		OptionQuery,
 	>;
 
@@ -161,7 +160,7 @@ pub mod pallet {
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
-		MuseumAdded(T::AccountId,u32),
+		QualifierAdded(T::AccountId,u32),
 		CollectorAdded(T::AccountId,u32),
 		GriotAdded(T::AccountId,u32),
 		DocumentCreated(T::AccountId,u64),
@@ -170,10 +169,10 @@ pub mod pallet {
 	// Errors inform users that something went wrong.
 	#[pallet::error]
 	pub enum Error<T> {
-		MuseumAlreadyExists,
+		QualifierAlreadyExists,
 		CollectorAlreadyExists,
 		GriotAlreadyExists,
-		NotAMuseum,
+		NotAQualifier,
 		NotACollector,
 		NotAGriot,
 	}
@@ -184,21 +183,21 @@ pub mod pallet {
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
 		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(4,3))]
-		pub fn add_museum(origin: OriginFor<T>, who: T::AccountId, metadata: Vec<u8>) -> DispatchResult {
+		pub fn add_qualifier(origin: OriginFor<T>, who: T::AccountId, metadata: Vec<u8>) -> DispatchResult {
 			ensure_root(origin)?;
-			ensure!(!Museums::<T>::contains_key(&who),Error::<T>::MuseumAlreadyExists);
+			ensure!(!Qualifiers::<T>::contains_key(&who),Error::<T>::QualifierAlreadyExists);
 
-			let uid = Self::get_total_museums().checked_add(1).ok_or(ArithmeticError::Overflow)?;
+			let uid = Self::get_total_qualifiers().checked_add(1).ok_or(ArithmeticError::Overflow)?;
 
-			let museum = Museum::<T> {
+			let qualifier = Qualifier::<T> {
 				uid: uid.clone(),
 				address: who.clone(),
 				metadata: metadata
 			};
 
-			Museums::<T>::insert(who.clone(),&museum);
-			TotalMuseums::<T>::put(&uid);
-			Self::deposit_event(Event::MuseumAdded(who,uid));
+			Qualifiers::<T>::insert(who.clone(),&qualifier);
+			TotalQualifiers::<T>::put(&uid);
+			Self::deposit_event(Event::QualifierAdded(who,uid));
 
 			Ok(())
 		}
@@ -253,7 +252,6 @@ pub mod pallet {
 
 			let document = Document::<T> {
 				creator: who.clone(),
-				uid: uid.clone(),
 				title: title.clone(),
 				description: description.clone(),
 				format: format.clone(),
@@ -280,8 +278,8 @@ pub mod pallet {
 			let check = Collectors::<T>::contains_key(who);
 			check
 		}
-		pub fn ensure_museum(who: T::AccountId) -> bool {
-			let check = Museums::<T>::contains_key(who);
+		pub fn ensure_qualifier(who: T::AccountId) -> bool {
+			let check = Qualifiers::<T>::contains_key(who);
 			check
 		}
 		

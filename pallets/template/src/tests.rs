@@ -2,19 +2,19 @@ use crate::{mock::*, Error};
 use frame_support::{assert_noop, assert_ok};
 
 #[test]
-fn it_works_for_default_value() {
+fn it_adds_qualifier_should_work() {
 	new_test_ext().execute_with(|| {
-		// Dispatch a signed extrinsic.
-		//assert_ok!(TemplateModule::do_something(Origin::signed(1), 42));
+		//Dispatch a signed extrinsic.
+		assert_ok!(TemplateModule::add_qualifier(Origin::root(),1,b"abc".to_vec()));
 		// Read pallet storage and assert an expected result.
-		//assert_eq!(TemplateModule::something(), Some(42));
+		assert_eq!(TemplateModule::get_total_qualifiers(), 1);
 	});
 }
 
 #[test]
-fn correct_error_for_none_value() {
+fn it_adds_qualifier_should_fail() {
 	new_test_ext().execute_with(|| {
-		// Ensure the expected error is thrown when no value is present.
-		//assert_noop!(TemplateModule::cause_error(Origin::signed(1)), Error::<Test>::NoneValue);
+		assert_ok!(TemplateModule::add_qualifier(Origin::root(),1,b"abc".to_vec()));
+		assert_noop!(TemplateModule::add_qualifier(Origin::root(),1,b"abc".to_vec()), Error::<Test>::QualifierAlreadyExists);
 	});
 }
