@@ -19,6 +19,17 @@ pub struct Document<T:Config> {
 }
 ```
 
+Documents can be submitted by calling
+
+```
+pub fn create_document(origin: OriginFor<T>, title: Vec<u8>, description: Vec<u8>,
+		format: Vec<u8>, hash: Vec<u8>) 
+```
+
+Any submitted document has to undergo an expert review process and a community vote before being considered verified.
+Implementation so far includes storage elements,  membership setup and functions to add documents data to the blockchain.
+We are currently working on the voting mechanism and full DAO governance.
+
 
 ## TODO
 
