@@ -8,25 +8,22 @@ Black History DAO aims to collect, preserve and share the real stories of Black 
 
 DAO Membership
 ```
-#[derive(Clone, Encode, Decode, PartialEq, Debug, TypeInfo, Eq)]
-	#[scale_info(skip_type_params(T))]
-	pub struct Qualifier<T:Config> {
+
+pub struct Qualifier<T:Config> {
 		pub uid: u32,
 		pub address: T::AccountId,
 		pub metadata: Vec<u8>,
 	}
 
-	#[derive(Clone, Encode, Decode, PartialEq, Debug, TypeInfo, Eq)]
-	#[scale_info(skip_type_params(T))]
-	pub struct Collector<T:Config> {
+	
+pub struct Collector<T:Config> {
 		pub uid: u32,
 		pub address: T::AccountId,
 		pub metadata: Vec<u8>,
 	}
 
-	#[derive(Clone, Encode, Decode, PartialEq, Debug, TypeInfo, Eq)]
-	#[scale_info(skip_type_params(T))]
-	pub struct Contributor<T:Config> {
+	
+pub struct Contributor<T:Config> {
 		pub uid: u32,
 		pub address: T::AccountId,
 		pub metadata: Vec<u8>,
