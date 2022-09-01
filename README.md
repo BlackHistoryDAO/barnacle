@@ -6,6 +6,33 @@ This DAO Appchain is being built on Barnacle Node.
 
 Black History DAO aims to collect, preserve and share the real stories of Black history and anchoring them on the blockchain. The documents and stories are meant to be verified by the DAO community and experts and stored as a struct on the blockchain and on IPFS.
 
+DAO Membership
+```
+#[derive(Clone, Encode, Decode, PartialEq, Debug, TypeInfo, Eq)]
+	#[scale_info(skip_type_params(T))]
+	pub struct Qualifier<T:Config> {
+		pub uid: u32,
+		pub address: T::AccountId,
+		pub metadata: Vec<u8>,
+	}
+
+	#[derive(Clone, Encode, Decode, PartialEq, Debug, TypeInfo, Eq)]
+	#[scale_info(skip_type_params(T))]
+	pub struct Collector<T:Config> {
+		pub uid: u32,
+		pub address: T::AccountId,
+		pub metadata: Vec<u8>,
+	}
+
+	#[derive(Clone, Encode, Decode, PartialEq, Debug, TypeInfo, Eq)]
+	#[scale_info(skip_type_params(T))]
+	pub struct Contributor<T:Config> {
+		pub uid: u32,
+		pub address: T::AccountId,
+		pub metadata: Vec<u8>,
+	}
+```
+
 Document struct
 
 ```
