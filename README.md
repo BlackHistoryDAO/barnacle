@@ -28,10 +28,9 @@ pub fn create_document(origin: OriginFor<T>, title: Vec<u8>, description: Vec<u8
 
 Any submitted document has to undergo an expert review process and a community vote before being considered verified.
 Implementation so far includes storage elements,  membership setup and functions to add documents data to the blockchain.
-We are currently working on the voting mechanism and full DAO governance.
+We are currently working on the voting mechanism and full DAO governance. We expect the first iteration of DAO testnet to
+be up and running by the end of September.
 
-
-## TODO
 
 ### Install Rust Environment
 
@@ -52,6 +51,13 @@ git clone https://github.com/BlackHistoryDAO/barnacle.git
 ```
 $ cargo build --release
 $ ./target/release/appchain-barnacle --dev --tmp
+
+```
+
+### Run Tests
+
+```
+cargo test
 ```
 
 ### Ignore for now
