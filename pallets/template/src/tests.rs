@@ -54,3 +54,13 @@ fn it_adds_collector_should_fail() {
 		assert_noop!(TemplateModule::add_collector(Origin::root(),1,b"abc".to_vec()), Error::<Test>::CollectorAlreadyExists);
 	});
 }
+
+#[test]
+fn it_creates_document_should_work() {
+	new_test_ext().execute_with(|| {
+		assert_ok!(TemplateModule::add_contributor(Origin::root(),2,b"abc".to_vec()));
+		assert_ok!(TemplateModule::create_document(Origin::signed(2),b"Doc1".to_vec(),b"Test1".to_vec(),b"pdf".to_vec(),b"https://ipfs.hash".to_vec()));
+		assert_eq!(TemplateModule::get_total_items(),1);
+	});
+	
+}

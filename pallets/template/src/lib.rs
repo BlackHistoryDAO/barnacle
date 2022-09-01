@@ -189,6 +189,10 @@ pub mod pallet {
 		NotAContributor,
 		DocumentNotFound,
 		IncorrectDocumentStatus,
+		DocumentTitleNotProvided,
+		DocumentDescriptionNotProvided,
+		DocumentFormatNotProvided,
+		DocumentIPFSHashNotProvided,
 	}
 
 	// Dispatchable functions allows users to interact with the pallet and invoke state changes.
@@ -261,6 +265,10 @@ pub mod pallet {
 		format: Vec<u8>, hash: Vec<u8>) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			ensure!(Self::ensure_contributor(who.clone()),Error::<T>::NotAContributor);
+			ensure!(!title.is_empty(),Error::<T>::DocumentTitleNotProvided);
+			ensure!(!description.is_empty(),Error::<T>::DocumentDescriptionNotProvided);
+			ensure!(!format.is_empty(),Error::<T>::DocumentFormatNotProvided);
+			ensure!(!hash.is_empty(),Error::<T>::DocumentIPFSHashNotProvided);
 
 			let uid = Self::get_total_items().checked_add(1).ok_or(ArithmeticError::Overflow)?;
 
