@@ -31,6 +31,12 @@ pub mod pallet {
 
 	type BalanceOf<T> = <<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
 
+	#[pallet::type_value]
+    pub fn DefaultVotingWindow<T: Config>() -> u32
+    {
+        14400u32
+    }
+
 	#[derive(Clone, Encode, Decode, PartialEq, Debug, TypeInfo, Eq)]
 	#[scale_info(skip_type_params(T))]
 	pub struct Document<T:Config> {
@@ -40,6 +46,17 @@ pub mod pallet {
 		pub format: Vec<u8>,
 		pub hash: Vec<u8>,
 		pub status: DocumentStatus,
+	}
+
+	#[derive(Clone, Encode, Decode, PartialEq, Debug, TypeInfo, Eq)]
+	#[scale_info(skip_type_params(T))]
+	pub struct Vote<T:Config> {
+		pub document_id: u64,
+		pub yes_votes: u64,
+		pub no_votes: u64,
+		pub start: T::BlockNumber,
+		pub end: T::BlockNumber,
+		pub status: VoteStatus,
 	}
 
 	#[derive(Clone, Encode, Decode, PartialEq, Debug, TypeInfo, Eq)]
@@ -77,7 +94,17 @@ pub mod pallet {
 
 	#[derive(Clone, Encode, Decode, PartialEq, Debug, TypeInfo, Eq)]
 	#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+	pub enum VoteStatus {
+		InProgress,
+		Passed,
+		Failed,
+		Expired,
+	}
+
+	#[derive(Clone, Encode, Decode, PartialEq, Debug, TypeInfo, Eq)]
+	#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 	pub enum DocumentStatus {
+		Submitted,
 		UnderReview,
 		VoteInProgress,
 		Verified,
@@ -117,6 +144,18 @@ pub mod pallet {
 	pub(super) type TotalQualifiers<T> = StorageValue<_, u32,ValueQuery>;
 
 	#[pallet::storage]
+	#[pallet::getter(fn get_qualification_vote_count)]
+	pub(super) type QualificationVotesCount<T> = StorageValue<_, u64,ValueQuery>;
+
+	#[pallet::storage]
+	#[pallet::getter(fn get_verification_vote_count)]
+	pub(super) type VerificationVotesCount<T> = StorageValue<_, u64,ValueQuery>;
+
+	#[pallet::storage]
+	#[pallet::getter(fn get_voting_window)]
+	pub(super) type VotingWindow<T> = StorageValue<_, u32,ValueQuery,DefaultVotingWindow<T>>;
+
+	#[pallet::storage]
 	#[pallet::getter(fn get_transactions_per_address)]
 	pub(super) type TransactionsPerAddress<T:Config> = StorageMap<
 		_,
@@ -133,6 +172,26 @@ pub mod pallet {
 		Blake2_128Concat,
 		u64,
 		Document<T>,
+		OptionQuery,
+	>;
+
+	#[pallet::storage]
+	#[pallet::getter(fn get_qualification_vote)]
+	pub(super) type QualificationVotes<T:Config> = StorageMap<
+		_,
+		Blake2_128Concat,
+		u64,
+		Vote<T>,
+		OptionQuery,
+	>;
+
+	#[pallet::storage]
+	#[pallet::getter(fn get_verification_vote)]
+	pub(super) type VerificationVotes<T:Config> = StorageMap<
+		_,
+		Blake2_128Concat,
+		u64,
+		Vote<T>,
 		OptionQuery,
 	>;
 
@@ -176,6 +235,8 @@ pub mod pallet {
 		ContributorAdded(T::AccountId,u32),
 		DocumentCreated(T::AccountId,u64),
 		DocumentStatusUpdated(u64,u8),
+		VotingWindowChanged(u32),
+		QualificationVotingStarted(u64),
 	}
 
 	// Errors inform users that something went wrong.
@@ -193,6 +254,8 @@ pub mod pallet {
 		DocumentDescriptionNotProvided,
 		DocumentFormatNotProvided,
 		DocumentIPFSHashNotProvided,
+		VerificationVoteAlreadyCreated,
+		VotingWindowNotValid,
 	}
 
 	// Dispatchable functions allows users to interact with the pallet and invoke state changes.
@@ -200,7 +263,7 @@ pub mod pallet {
 	// Dispatchable functions must be annotated with a weight and must return a DispatchResult.
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
-		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(4,3))]
+		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(4,2))]
 		pub fn add_qualifier(origin: OriginFor<T>, who: T::AccountId, metadata: Vec<u8>) -> DispatchResult {
 			ensure_root(origin)?;
 			ensure!(!Qualifiers::<T>::contains_key(&who),Error::<T>::QualifierAlreadyExists);
@@ -220,7 +283,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(4,3))]
+		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(4,2))]
 		pub fn add_collector(origin: OriginFor<T>, who: T::AccountId, metadata: Vec<u8>) -> DispatchResult {
 			ensure_root(origin)?;
 			ensure!(!Collectors::<T>::contains_key(&who),Error::<T>::CollectorAlreadyExists);
@@ -240,7 +303,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(4,3))]
+		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(4,2))]
 		pub fn add_contributor(origin: OriginFor<T>, who: T::AccountId, metadata: Vec<u8>) -> DispatchResult {
 			ensure_root(origin)?;
 			ensure!(!Contributors::<T>::contains_key(&who),Error::<T>::ContributorAlreadyExists);
@@ -260,7 +323,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(4,3))]
+		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(4,2))]
 		pub fn create_document(origin: OriginFor<T>, title: Vec<u8>, description: Vec<u8>,
 		format: Vec<u8>, hash: Vec<u8>) -> DispatchResult {
 			let who = ensure_signed(origin)?;
@@ -278,16 +341,64 @@ pub mod pallet {
 				description: description.clone(),
 				format: format.clone(),
 				hash: hash.clone(),
-				status: DocumentStatus::UnderReview,
+				status: DocumentStatus::Submitted,
 			};
 
-			Documents::<T>::insert(uid.clone(),&document);
+			Documents::<T>::insert(uid.clone(),document);
 			TotalItems::<T>::put(&uid);
 
 			Self::deposit_event(Event::DocumentCreated(who,uid));
 
 			Ok(())
 		}
+
+		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(4,4))]
+		pub fn create_qualification_voting(origin: OriginFor<T>, document_id: u64) -> DispatchResult{
+
+			ensure_root(origin)?;
+			ensure!(!Documents::<T>::contains_key(document_id.clone()),Error::<T>::DocumentNotFound);
+
+			let mut document = Self::get_document(document_id.clone()).ok_or(Error::<T>::DocumentNotFound)?;
+
+			ensure!(document.status == DocumentStatus::Submitted, Error::<T>::VerificationVoteAlreadyCreated);
+
+			let uid = Self::get_qualification_vote_count().checked_add(1).ok_or(ArithmeticError::Overflow)?;
+
+			let now = <frame_system::Pallet<T>>::block_number();
+
+			let end = now + VotingWindow::<T>::get().into();
+
+			let vote = Vote::<T> {
+				document_id: document_id,
+				yes_votes: 0,
+				no_votes: 0,
+				start: now,
+				end: end,
+				status: VoteStatus::InProgress,
+			};
+
+			QualificationVotes::<T>::insert(uid.clone(),&vote);
+			Self::deposit_event(Event::QualificationVotingStarted(uid));
+
+			document.status = DocumentStatus::UnderReview;
+			Documents::<T>::insert(document_id.clone(),document);
+			Self::deposit_event(Event::DocumentStatusUpdated(document_id,1));
+			
+			Ok(())
+		}
+
+		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(1,1))]
+		pub fn set_voting_window(origin: OriginFor<T>, window: u32) -> DispatchResult {
+			ensure_root(origin)?;
+			ensure!(window > 0, Error::<T>::VotingWindowNotValid);
+
+			VotingWindow::<T>::put(window.clone());
+
+			Self::deposit_event(Event::VotingWindowChanged(window));
+
+			Ok(())
+		}
+
 	}
 
 	// Helpful functions
@@ -312,15 +423,18 @@ pub mod pallet {
 
 			match status {
 				0 => {
-					document.status = DocumentStatus::UnderReview;
+					document.status = DocumentStatus::Submitted;
 				},
 				1 => {
-					document.status = DocumentStatus::VoteInProgress;
+					document.status = DocumentStatus::UnderReview;
 				},
 				2 => {
-					document.status = DocumentStatus::Verified;
+					document.status = DocumentStatus::VoteInProgress;
 				},
 				3 => {
+					document.status = DocumentStatus::Verified;
+				},
+				4 => {
 					document.status = DocumentStatus::Rejected;
 				},
 				_ => ()
