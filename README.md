@@ -9,25 +9,18 @@ Black History DAO aims to collect, preserve and share the real stories of Black 
 DAO Membership
 ```
 
-pub struct Qualifier<T:Config> {
-		pub uid: u32,
-		pub address: T::AccountId,
-		pub metadata: Vec<u8>,
-	}
+  #[pallet::storage]
+	#[pallet::getter(fn get_all_qualifiers)]
+	pub(super) type Qualifiers<T:Config> = StorageValue<_, Vec<T::AccountId>, ValueQuery>;
 
-	
-pub struct Collector<T:Config> {
-		pub uid: u32,
-		pub address: T::AccountId,
-		pub metadata: Vec<u8>,
-	}
+	#[pallet::storage]
+	#[pallet::getter(fn get_all_collectors)]
+	pub(super) type Collectors<T:Config> = StorageValue<_, Vec<T::AccountId>, ValueQuery>;
 
-	
-pub struct Contributor<T:Config> {
-		pub uid: u32,
-		pub address: T::AccountId,
-		pub metadata: Vec<u8>,
-	}
+	#[pallet::storage]
+	#[pallet::getter(fn get_all_contributors)]
+	pub(super) type Contributors<T:Config> = StorageValue<_, Vec<T::AccountId>, ValueQuery>;
+  
 ```
 
 Document struct
