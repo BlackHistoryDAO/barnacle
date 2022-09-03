@@ -60,30 +60,6 @@ pub mod pallet {
 	}
 
 	#[derive(Clone, Encode, Decode, PartialEq, Debug, TypeInfo, Eq)]
-	#[scale_info(skip_type_params(T))]
-	pub struct Qualifier<T:Config> {
-		pub uid: u32,
-		pub address: T::AccountId,
-		pub metadata: Vec<u8>,
-	}
-
-	#[derive(Clone, Encode, Decode, PartialEq, Debug, TypeInfo, Eq)]
-	#[scale_info(skip_type_params(T))]
-	pub struct Collector<T:Config> {
-		pub uid: u32,
-		pub address: T::AccountId,
-		pub metadata: Vec<u8>,
-	}
-
-	#[derive(Clone, Encode, Decode, PartialEq, Debug, TypeInfo, Eq)]
-	#[scale_info(skip_type_params(T))]
-	pub struct Contributor<T:Config> {
-		pub uid: u32,
-		pub address: T::AccountId,
-		pub metadata: Vec<u8>,
-	}
-
-	#[derive(Clone, Encode, Decode, PartialEq, Debug, TypeInfo, Eq)]
 	#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 	pub enum Roles {
 		QualifierRole,
@@ -132,16 +108,16 @@ pub mod pallet {
 	pub(super) type TotalTransactions<T> = StorageValue<_, u64,ValueQuery>;
 
 	#[pallet::storage]
-	#[pallet::getter(fn get_total_contributors)]
-	pub(super) type TotalContributors<T> = StorageValue<_, u32,ValueQuery>;
+	#[pallet::getter(fn contributors_uid_count)]
+	pub(super) type ContributorsCount<T> = StorageValue<_, u32,ValueQuery>;
 
 	#[pallet::storage]
-	#[pallet::getter(fn get_total_collectors)]
-	pub(super) type TotalCollectors<T> = StorageValue<_, u32,ValueQuery>;
+	#[pallet::getter(fn collectors_uid_count)]
+	pub(super) type CollectorsCount<T> = StorageValue<_, u32,ValueQuery>;
 
 	#[pallet::storage]
-	#[pallet::getter(fn get_total_qualifiers)]
-	pub(super) type TotalQualifiers<T> = StorageValue<_, u32,ValueQuery>;
+	#[pallet::getter(fn qualifiers_uid_count)]
+	pub(super) type QualifiersCount<T> = StorageValue<_, u32,ValueQuery>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn get_qualification_vote_count)]
@@ -196,34 +172,16 @@ pub mod pallet {
 	>;
 
 	#[pallet::storage]
-	#[pallet::getter(fn get_qualifier)]
-	pub(super) type Qualifiers<T:Config> = StorageMap<
-		_,
-		Blake2_128Concat,
-		T::AccountId,
-		Qualifier<T>,
-		OptionQuery,
-	>;
+	#[pallet::getter(fn get_all_qualifiers)]
+	pub(super) type Qualifiers<T:Config> = StorageValue<_, Vec<T::AccountId>, ValueQuery>;
 
 	#[pallet::storage]
-	#[pallet::getter(fn get_collector)]
-	pub(super) type Collectors<T:Config> = StorageMap<
-		_,
-		Blake2_128Concat,
-		T::AccountId,
-		Collector<T>,
-		OptionQuery,
-	>;
+	#[pallet::getter(fn get_all_collectors)]
+	pub(super) type Collectors<T:Config> = StorageValue<_, Vec<T::AccountId>, ValueQuery>;
 
 	#[pallet::storage]
-	#[pallet::getter(fn get_contributor)]
-	pub(super) type Contributors<T:Config> = StorageMap<
-		_,
-		Blake2_128Concat,
-		T::AccountId,
-		Contributor<T>,
-		OptionQuery,
-	>;
+	#[pallet::getter(fn get_all_contributors)]
+	pub(super) type Contributors<T:Config> = StorageValue<_, Vec<T::AccountId>, ValueQuery>;
 
 	// Pallets use events to inform users when important changes are made.
 	// https://docs.substrate.io/v3/runtime/events-and-errors
@@ -263,65 +221,66 @@ pub mod pallet {
 	// Dispatchable functions must be annotated with a weight and must return a DispatchResult.
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
-		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(4,2))]
-		pub fn add_qualifier(origin: OriginFor<T>, who: T::AccountId, metadata: Vec<u8>) -> DispatchResult {
+		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(4,3))]
+		pub fn add_qualifier(origin: OriginFor<T>, who: T::AccountId) -> DispatchResult {
 			ensure_root(origin)?;
-			ensure!(!Qualifiers::<T>::contains_key(&who),Error::<T>::QualifierAlreadyExists);
+			let mut qualifiers = Qualifiers::<T>::get();
 
-			let uid = Self::get_total_qualifiers().checked_add(1).ok_or(ArithmeticError::Overflow)?;
+			let uid = Self::qualifiers_uid_count().checked_add(1).ok_or(ArithmeticError::Overflow)?;
 
-			let qualifier = Qualifier::<T> {
-				uid: uid.clone(),
-				address: who.clone(),
-				metadata: metadata
-			};
+			match qualifiers.binary_search(&who) {
+				Ok(_) => Err(Error::<T>::QualifierAlreadyExists.into()),
+				Err(index) => {
+					qualifiers.insert(index, who.clone());
+					Qualifiers::<T>::put(qualifiers);
+					QualifiersCount::<T>::put(uid.clone());
+					Self::deposit_event(Event::QualifierAdded(who,uid));
+					Ok(())
+				}
+			}
 
-			Qualifiers::<T>::insert(who.clone(),&qualifier);
-			TotalQualifiers::<T>::put(&uid);
-			Self::deposit_event(Event::QualifierAdded(who,uid));
-
-			Ok(())
 		}
 
-		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(4,2))]
-		pub fn add_collector(origin: OriginFor<T>, who: T::AccountId, metadata: Vec<u8>) -> DispatchResult {
+		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(4,3))]
+		pub fn add_collector(origin: OriginFor<T>, who: T::AccountId) -> DispatchResult {
 			ensure_root(origin)?;
-			ensure!(!Collectors::<T>::contains_key(&who),Error::<T>::CollectorAlreadyExists);
+			let mut collectors = Collectors::<T>::get();
 
-			let uid = Self::get_total_collectors().checked_add(1).ok_or(ArithmeticError::Overflow)?;
+			let uid = Self::collectors_uid_count().checked_add(1).ok_or(ArithmeticError::Overflow)?;
 
-			let collector = Collector::<T> {
-				uid: uid.clone(),
-				address: who.clone(),
-				metadata: metadata
-			};
+			match collectors.binary_search(&who) {
+				Ok(_) => Err(Error::<T>::CollectorAlreadyExists.into()),
+				Err(index) => {
+					collectors.insert(index, who.clone());
+					Collectors::<T>::put(collectors);
+					CollectorsCount::<T>::put(uid.clone());
+					Self::deposit_event(Event::CollectorAdded(who,uid));
+					Ok(())
+				}
+			}
 
-			Collectors::<T>::insert(who.clone(),&collector);
-			TotalCollectors::<T>::put(&uid);
-			Self::deposit_event(Event::CollectorAdded(who,uid));
-
-			Ok(())
 		}
 
-		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(4,2))]
-		pub fn add_contributor(origin: OriginFor<T>, who: T::AccountId, metadata: Vec<u8>) -> DispatchResult {
+		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(4,3))]
+		pub fn add_contributor(origin: OriginFor<T>, who: T::AccountId) -> DispatchResult {
 			ensure_root(origin)?;
-			ensure!(!Contributors::<T>::contains_key(&who),Error::<T>::ContributorAlreadyExists);
+			let mut contributors = Contributors::<T>::get();
 
-			let uid = Self::get_total_contributors().checked_add(1).ok_or(ArithmeticError::Overflow)?;
+			let uid = Self::contributors_uid_count().checked_add(1).ok_or(ArithmeticError::Overflow)?;
 
-			let Contributor = Contributor::<T> {
-				uid: uid.clone(),
-				address: who.clone(),
-				metadata: metadata
-			};
+			match contributors.binary_search(&who) {
+				Ok(_) => Err(Error::<T>::ContributorAlreadyExists.into()),
+				Err(index) => {
+					contributors.insert(index, who.clone());
+					Contributors::<T>::put(contributors);
+					ContributorsCount::<T>::put(uid.clone());
+					Self::deposit_event(Event::ContributorAdded(who,uid));
+					Ok(())
+				}
+			}
 
-			Contributors::<T>::insert(who.clone(),&Contributor);
-			TotalContributors::<T>::put(&uid);
-			Self::deposit_event(Event::ContributorAdded(who,uid));
-
-			Ok(())
 		}
+
 
 		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(4,2))]
 		pub fn create_document(origin: OriginFor<T>, title: Vec<u8>, description: Vec<u8>,
@@ -404,17 +363,41 @@ pub mod pallet {
 	// Helpful functions
 	impl<T: Config> Pallet<T> {
 		pub fn ensure_contributor(who: T::AccountId) -> bool {
-			let check = Contributors::<T>::contains_key(who);
+			let contributors = Contributors::<T>::get();
+
+			let mut check: bool = false;
+
+			match contributors.binary_search(&who) {
+				Ok(_) => check = true,
+				Err(index) => check = false,
+			}
+			
 			check
 		}
 
 		pub fn ensure_collector(who: T::AccountId) -> bool {
-			let check = Collectors::<T>::contains_key(who);
+			let collectors = Collectors::<T>::get();
+
+			let mut check: bool = false;
+
+			match collectors.binary_search(&who) {
+				Ok(_) => check = true,
+				Err(index) => check = false,
+			}
+			
 			check
 		}
 
 		pub fn ensure_qualifier(who: T::AccountId) -> bool {
-			let check = Qualifiers::<T>::contains_key(who);
+			let qualifiers = Qualifiers::<T>::get();
+
+			let mut check: bool = false;
+
+			match qualifiers.binary_search(&who) {
+				Ok(_) => check = true,
+				Err(index) => check = false,
+			}
+			
 			check
 		}
 
