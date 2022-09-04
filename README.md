@@ -4,7 +4,7 @@ This DAO Appchain is being built on Barnacle Node.
 
 ## Appchain Overview
 
-Black History DAO aims to collect, preserve and share the real stories of Black history and anchoring them on the blockchain. The documents and stories are meant to be verified by the DAO community and experts and stored as a struct on the blockchain and on IPFS.
+Black History DAO aims to collect, preserve and share the real stories of Black history and anchoring them on the blockchain. The documents and stories are meant to be verified by the Black History DAO community and appointed by vote experts. Once approved, the data will be stored as a structure on the blockchain and on IPFS.
 
 DAO Membership
 ```
