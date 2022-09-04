@@ -32,7 +32,13 @@ pub mod pallet {
 	type BalanceOf<T> = <<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
 
 	#[pallet::type_value]
-    pub fn DefaultVotingWindow<T: Config>() -> u32
+    pub fn DefaultQualificationVotingWindow<T: Config>() -> u32
+    {
+        14400u32
+    }
+
+	#[pallet::type_value]
+    pub fn DefaultVerificationVotingWindow<T: Config>() -> u32
     {
         14400u32
     }
@@ -59,7 +65,7 @@ pub mod pallet {
 		pub status: VoteStatus,
 	}
 
-	#[derive(Clone, Encode, Decode, PartialEq, Debug, TypeInfo, Eq)]
+	#[derive(Clone, Encode, Decode, PartialEq, Debug, TypeInfo, Eq, Copy)]
 	#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 	pub enum Roles {
 		QualifierRole,
@@ -68,7 +74,7 @@ pub mod pallet {
 		VerifierRole,
 	}
 
-	#[derive(Clone, Encode, Decode, PartialEq, Debug, TypeInfo, Eq)]
+	#[derive(Clone, Encode, Decode, PartialEq, Debug, TypeInfo, Eq, Copy)]
 	#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 	pub enum VoteStatus {
 		InProgress,
@@ -77,11 +83,12 @@ pub mod pallet {
 		Expired,
 	}
 
-	#[derive(Clone, Encode, Decode, PartialEq, Debug, TypeInfo, Eq)]
+	#[derive(Clone, Encode, Decode, PartialEq, Debug, TypeInfo, Eq, Copy)]
 	#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 	pub enum DocumentStatus {
 		Submitted,
 		UnderReview,
+		SuccessfulReview,
 		VoteInProgress,
 		Verified,
 		Rejected,
@@ -128,8 +135,12 @@ pub mod pallet {
 	pub(super) type VerificationVotesCount<T> = StorageValue<_, u64,ValueQuery>;
 
 	#[pallet::storage]
-	#[pallet::getter(fn get_voting_window)]
-	pub(super) type VotingWindow<T> = StorageValue<_, u32,ValueQuery,DefaultVotingWindow<T>>;
+	#[pallet::getter(fn get_qualification_voting_window)]
+	pub(super) type QualificationVotingWindow<T> = StorageValue<_, u32,ValueQuery,DefaultQualificationVotingWindow<T>>;
+
+	#[pallet::storage]
+	#[pallet::getter(fn get_verification_voting_window)]
+	pub(super) type VerificationVotingWindow<T> = StorageValue<_, u32,ValueQuery,DefaultVerificationVotingWindow<T>>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn get_transactions_per_address)]
@@ -193,8 +204,10 @@ pub mod pallet {
 		ContributorAdded(T::AccountId,u32),
 		DocumentCreated(T::AccountId,u64),
 		DocumentStatusUpdated(u64,u8),
-		VotingWindowChanged(u32),
+		QualificationVotingWindowChanged(u32),
 		QualificationVotingStarted(u64),
+		VerificationVotingWindowChanged(u32),
+		VerificationVotingStarted(u64),
 	}
 
 	// Errors inform users that something went wrong.
@@ -214,6 +227,7 @@ pub mod pallet {
 		DocumentIPFSHashNotProvided,
 		VerificationVoteAlreadyCreated,
 		VotingWindowNotValid,
+		DocumentNotReviewed,
 	}
 
 	// Dispatchable functions allows users to interact with the pallet and invoke state changes.
@@ -315,7 +329,6 @@ pub mod pallet {
 		pub fn create_qualification_voting(origin: OriginFor<T>, document_id: u64) -> DispatchResult{
 
 			ensure_root(origin)?;
-			ensure!(!Documents::<T>::contains_key(document_id.clone()),Error::<T>::DocumentNotFound);
 
 			let mut document = Self::get_document(document_id.clone()).ok_or(Error::<T>::DocumentNotFound)?;
 
@@ -325,7 +338,7 @@ pub mod pallet {
 
 			let now = <frame_system::Pallet<T>>::block_number();
 
-			let end = now + VotingWindow::<T>::get().into();
+			let end = now + QualificationVotingWindow::<T>::get().into();
 
 			let vote = Vote::<T> {
 				document_id: document_id,
@@ -346,14 +359,60 @@ pub mod pallet {
 			Ok(())
 		}
 
+		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(4,4))]
+		pub fn create_verification_voting(origin: OriginFor<T>, document_id: u64) -> DispatchResult{
+
+			ensure_root(origin)?;
+
+			let mut document = Self::get_document(document_id.clone()).ok_or(Error::<T>::DocumentNotFound)?;
+
+			ensure!(document.status == DocumentStatus::SuccessfulReview, Error::<T>::DocumentNotReviewed);
+
+			let uid = Self::get_verification_vote_count().checked_add(1).ok_or(ArithmeticError::Overflow)?;
+
+			let now = <frame_system::Pallet<T>>::block_number();
+
+			let end = now + VerificationVotingWindow::<T>::get().into();
+
+			let vote = Vote::<T> {
+				document_id: document_id,
+				yes_votes: 0,
+				no_votes: 0,
+				start: now,
+				end: end,
+				status: VoteStatus::InProgress,
+			};
+
+			VerificationVotes::<T>::insert(uid.clone(),&vote);
+			Self::deposit_event(Event::VerificationVotingStarted(uid));
+
+			document.status = DocumentStatus::VoteInProgress;
+			Documents::<T>::insert(document_id.clone(),document);
+			Self::deposit_event(Event::DocumentStatusUpdated(document_id,3));
+			
+			Ok(())
+		}
+
 		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(1,1))]
-		pub fn set_voting_window(origin: OriginFor<T>, window: u32) -> DispatchResult {
+		pub fn set_qualification_voting_window(origin: OriginFor<T>, window: u32) -> DispatchResult {
 			ensure_root(origin)?;
 			ensure!(window > 0, Error::<T>::VotingWindowNotValid);
 
-			VotingWindow::<T>::put(window.clone());
+			QualificationVotingWindow::<T>::put(window.clone());
 
-			Self::deposit_event(Event::VotingWindowChanged(window));
+			Self::deposit_event(Event::QualificationVotingWindowChanged(window));
+
+			Ok(())
+		}
+
+		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(1,1))]
+		pub fn set_verification_voting_window(origin: OriginFor<T>, window: u32) -> DispatchResult {
+			ensure_root(origin)?;
+			ensure!(window > 0, Error::<T>::VotingWindowNotValid);
+
+			VerificationVotingWindow::<T>::put(window.clone());
+
+			Self::deposit_event(Event::VerificationVotingWindowChanged(window));
 
 			Ok(())
 		}
@@ -412,12 +471,15 @@ pub mod pallet {
 					document.status = DocumentStatus::UnderReview;
 				},
 				2 => {
-					document.status = DocumentStatus::VoteInProgress;
+					document.status = DocumentStatus::SuccessfulReview;
 				},
 				3 => {
-					document.status = DocumentStatus::Verified;
+					document.status = DocumentStatus::VoteInProgress;
 				},
 				4 => {
+					document.status = DocumentStatus::Verified;
+				},
+				5 => {
 					document.status = DocumentStatus::Rejected;
 				},
 				_ => ()
