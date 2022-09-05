@@ -92,3 +92,31 @@ fn it_creates_qualification_voting_should_work() {
 		assert_ok!(TemplateModule::create_qualification_voting(Origin::root(),1));
 	});	
 }
+
+#[test]
+fn it_changes_qualification_quorum_should_work() {
+	new_test_ext().execute_with(|| {
+		assert_eq!(TemplateModule::get_qualification_quorum(),0u32);
+		assert_ok!(TemplateModule::set_qualification_quorum(Origin::root(),10u32));
+		assert_eq!(TemplateModule::get_qualification_quorum(),10u32);
+	});	
+}
+
+#[test]
+fn it_changes_verification_quorum_should_work() {
+	new_test_ext().execute_with(|| {
+		assert_eq!(TemplateModule::get_verification_quorum(),0u32);
+		assert_ok!(TemplateModule::set_verification_quorum(Origin::root(),1000u32));
+		assert_eq!(TemplateModule::get_verification_quorum(),1000u32);
+	});	
+}
+
+#[test]
+fn it_creates_and_finalizes_qualification_voting_should_work() {
+	new_test_ext().execute_with(|| {
+		assert_ok!(TemplateModule::add_contributor(Origin::root(),2));
+		assert_ok!(TemplateModule::create_document(Origin::signed(2),b"Doc1".to_vec(),b"Test1".to_vec(),b"pdf".to_vec(),b"https://ipfs.hash".to_vec()));
+		assert_eq!(TemplateModule::get_total_items(),1);
+		assert_ok!(TemplateModule::create_qualification_voting(Origin::root(),1));
+	});	
+}

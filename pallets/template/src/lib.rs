@@ -43,6 +43,18 @@ pub mod pallet {
         14400u32
     }
 
+	#[pallet::type_value]
+    pub fn DefaultQualificationQuorum<T: Config>() -> u32
+    {
+        0u32
+    }
+
+	#[pallet::type_value]
+    pub fn DefaultVerificationQuorum<T: Config>() -> u32
+    {
+        0u32
+    }
+
 	#[derive(Clone, Encode, Decode, PartialEq, Debug, TypeInfo, Eq)]
 	#[scale_info(skip_type_params(T))]
 	pub struct Document<T:Config> {
@@ -143,6 +155,14 @@ pub mod pallet {
 	pub(super) type VerificationVotingWindow<T> = StorageValue<_, u32,ValueQuery,DefaultVerificationVotingWindow<T>>;
 
 	#[pallet::storage]
+	#[pallet::getter(fn get_qualification_quorum)]
+	pub(super) type QualificationQuorum<T> = StorageValue<_, u32,ValueQuery,DefaultQualificationQuorum<T>>;
+
+	#[pallet::storage]
+	#[pallet::getter(fn get_verification_quorum)]
+	pub(super) type VerificationQuorum<T> = StorageValue<_, u32,ValueQuery,DefaultVerificationQuorum<T>>;
+
+	#[pallet::storage]
 	#[pallet::getter(fn get_transactions_per_address)]
 	pub(super) type TransactionsPerAddress<T:Config> = StorageMap<
 		_,
@@ -208,6 +228,10 @@ pub mod pallet {
 		QualificationVotingStarted(u64),
 		VerificationVotingWindowChanged(u32),
 		VerificationVotingStarted(u64),
+		QualificationVotingEnded(u64),
+		VerificationVotingEnded(u64),
+		QualificationQuorumChanged(u32),
+		VerificationQuorumChanged(u32),
 	}
 
 	// Errors inform users that something went wrong.
@@ -228,6 +252,10 @@ pub mod pallet {
 		VerificationVoteAlreadyCreated,
 		VotingWindowNotValid,
 		DocumentNotReviewed,
+		VoteNotFound,
+		VoteNotInProgress,
+		VoteStillInProgress,
+		DocumentNotUnderReview,
 	}
 
 	// Dispatchable functions allows users to interact with the pallet and invoke state changes.
@@ -393,6 +421,100 @@ pub mod pallet {
 			Ok(())
 		}
 
+		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(4,4))]
+		pub fn finalize_qualification_voting(origin: OriginFor<T>, voting_id: u64) -> DispatchResult {
+			ensure_root(origin)?;
+
+			let mut vote = Self::get_qualification_vote(voting_id.clone()).ok_or(Error::<T>::VoteNotFound)?;
+			ensure!(vote.status == VoteStatus::InProgress, Error::<T>::VoteNotInProgress);
+			let mut document = Self::get_document(vote.document_id.clone()).ok_or(Error::<T>::DocumentNotFound)?;
+			ensure!(document.status == DocumentStatus::UnderReview, Error::<T>::DocumentNotUnderReview);
+			let now = <frame_system::Pallet<T>>::block_number();
+			ensure!(now > vote.end,Error::<T>::VoteStillInProgress);
+
+			let quorum = QualificationQuorum::<T>::get().into();
+			let total_votes = vote.yes_votes + vote.no_votes;
+
+			if total_votes < quorum {
+				vote.status = VoteStatus::Failed;
+				document.status = DocumentStatus::Rejected;
+				QualificationVotes::<T>::insert(voting_id.clone(),&vote);
+				Documents::<T>::insert(vote.document_id.clone(),document);
+				Self::deposit_event(Event::DocumentStatusUpdated(vote.document_id,5));
+				Self::deposit_event(Event::QualificationVotingEnded(voting_id));
+
+				return Ok(());
+			}
+
+			match vote.yes_votes > vote.no_votes {
+				true => {
+					vote.status = VoteStatus::Passed;
+					document.status = DocumentStatus::SuccessfulReview;
+					QualificationVotes::<T>::insert(voting_id.clone(),&vote);
+					Documents::<T>::insert(vote.document_id.clone(),document);
+					Self::deposit_event(Event::DocumentStatusUpdated(vote.document_id,2));
+					Self::deposit_event(Event::QualificationVotingEnded(voting_id));
+				},
+				false => {
+					vote.status = VoteStatus::Failed;
+					document.status = DocumentStatus::Rejected;
+					QualificationVotes::<T>::insert(voting_id.clone(),&vote);
+					Documents::<T>::insert(vote.document_id.clone(),document);
+					Self::deposit_event(Event::DocumentStatusUpdated(vote.document_id,5));
+					Self::deposit_event(Event::QualificationVotingEnded(voting_id));
+				},
+			}
+
+			Ok(())
+		}
+
+		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(4,4))]
+		pub fn finalize_verification_voting(origin: OriginFor<T>, voting_id: u64) -> DispatchResult {
+			ensure_root(origin)?;
+
+			let mut vote = Self::get_verification_vote(voting_id.clone()).ok_or(Error::<T>::VoteNotFound)?;
+			ensure!(vote.status == VoteStatus::InProgress, Error::<T>::VoteNotInProgress);
+			let mut document = Self::get_document(vote.document_id.clone()).ok_or(Error::<T>::DocumentNotFound)?;
+			ensure!(document.status == DocumentStatus::SuccessfulReview, Error::<T>::IncorrectDocumentStatus);
+			let now = <frame_system::Pallet<T>>::block_number();
+			ensure!(now > vote.end,Error::<T>::VoteStillInProgress);
+
+			let quorum = VerificationQuorum::<T>::get().into();
+			let total_votes = vote.yes_votes + vote.no_votes;
+
+			if total_votes < quorum {
+				vote.status = VoteStatus::Failed;
+				document.status = DocumentStatus::Rejected;
+				QualificationVotes::<T>::insert(voting_id.clone(),&vote);
+				Documents::<T>::insert(vote.document_id.clone(),document);
+				Self::deposit_event(Event::DocumentStatusUpdated(vote.document_id,5));
+				Self::deposit_event(Event::QualificationVotingEnded(voting_id));
+
+				return Ok(());
+			}
+
+			match vote.yes_votes > vote.no_votes {
+				true => {
+					vote.status = VoteStatus::Passed;
+					document.status = DocumentStatus::Verified;
+					QualificationVotes::<T>::insert(voting_id.clone(),&vote);
+					Documents::<T>::insert(vote.document_id.clone(),document);
+					Self::deposit_event(Event::DocumentStatusUpdated(vote.document_id,4));
+					Self::deposit_event(Event::QualificationVotingEnded(voting_id));
+				},
+				false => {
+					vote.status = VoteStatus::Failed;
+					document.status = DocumentStatus::Rejected;
+					QualificationVotes::<T>::insert(voting_id.clone(),&vote);
+					Documents::<T>::insert(vote.document_id.clone(),document);
+					Self::deposit_event(Event::DocumentStatusUpdated(vote.document_id,5));
+					Self::deposit_event(Event::QualificationVotingEnded(voting_id));
+				},
+			}
+
+			Ok(())
+		}
+
 		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(1,1))]
 		pub fn set_qualification_voting_window(origin: OriginFor<T>, window: u32) -> DispatchResult {
 			ensure_root(origin)?;
@@ -417,6 +539,28 @@ pub mod pallet {
 			Ok(())
 		}
 
+		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(1,1))]
+		pub fn set_qualification_quorum(origin: OriginFor<T>, quorum: u32) -> DispatchResult {
+			ensure_root(origin)?;
+
+			QualificationQuorum::<T>::put(quorum.clone());
+
+			Self::deposit_event(Event::QualificationQuorumChanged(quorum));
+
+			Ok(())
+		}
+
+		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(1,1))]
+		pub fn set_verification_quorum(origin: OriginFor<T>, quorum: u32) -> DispatchResult {
+			ensure_root(origin)?;
+
+			VerificationQuorum::<T>::put(quorum.clone());
+
+			Self::deposit_event(Event::VerificationQuorumChanged(quorum));
+
+			Ok(())
+		}
+
 	}
 
 	// Helpful functions
@@ -428,7 +572,7 @@ pub mod pallet {
 
 			match contributors.binary_search(&who) {
 				Ok(_) => check = true,
-				Err(index) => check = false,
+				Err(_index) => check = false,
 			}
 			
 			check
@@ -441,7 +585,7 @@ pub mod pallet {
 
 			match collectors.binary_search(&who) {
 				Ok(_) => check = true,
-				Err(index) => check = false,
+				Err(_index) => check = false,
 			}
 			
 			check
@@ -454,7 +598,7 @@ pub mod pallet {
 
 			match qualifiers.binary_search(&who) {
 				Ok(_) => check = true,
-				Err(index) => check = false,
+				Err(_index) => check = false,
 			}
 			
 			check
