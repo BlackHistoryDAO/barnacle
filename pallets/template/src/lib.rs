@@ -106,6 +106,14 @@ pub mod pallet {
 		Rejected,
 	}
 
+	#[derive(Clone, Encode, Decode, PartialEq, Debug, TypeInfo, Eq, Copy)]
+	#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+	pub enum VoteType {
+		Qualification,
+		Verification,
+		Proposal,
+	}
+
 	/// Configure the pallet by specifying the parameters and types on which it depends.
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
@@ -203,6 +211,16 @@ pub mod pallet {
 	>;
 
 	#[pallet::storage]
+	#[pallet::getter(fn get_member_vote)]
+	pub(super) type MemberVote<T:Config> = StorageMap<
+		_,
+		Blake2_128Concat,
+		(T::AccountId,VoteType,u64),
+		bool,
+		OptionQuery,
+	>;
+
+	#[pallet::storage]
 	#[pallet::getter(fn get_all_qualifiers)]
 	pub(super) type Qualifiers<T:Config> = StorageValue<_, Vec<T::AccountId>, ValueQuery>;
 
@@ -232,6 +250,7 @@ pub mod pallet {
 		VerificationVotingEnded(u64),
 		QualificationQuorumChanged(u32),
 		VerificationQuorumChanged(u32),
+		VoteCast(u8,u64),
 	}
 
 	// Errors inform users that something went wrong.
@@ -256,6 +275,7 @@ pub mod pallet {
 		VoteNotInProgress,
 		VoteStillInProgress,
 		DocumentNotUnderReview,
+		MemberAlreadyVoted,
 	}
 
 	// Dispatchable functions allows users to interact with the pallet and invoke state changes.
@@ -418,6 +438,64 @@ pub mod pallet {
 			Documents::<T>::insert(document_id.clone(),document);
 			Self::deposit_event(Event::DocumentStatusUpdated(document_id,3));
 			
+			Ok(())
+		}
+
+		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(4,4))]
+		pub fn cast_qualification_vote(origin: OriginFor<T>, voting_id: u64, vote_cast: bool) -> DispatchResult  {
+			let who = ensure_signed(origin)?;
+			ensure!(Self::ensure_qualifier(who.clone()),Error::<T>::NotAQualifier);
+			let vote_type = VoteType::Qualification;
+			ensure!(!MemberVote::<T>::contains_key((who.clone(),vote_type.clone(),voting_id.clone())),Error::<T>::MemberAlreadyVoted);
+
+			let mut vote = Self::get_qualification_vote(voting_id.clone()).ok_or(Error::<T>::VoteNotFound)?;
+			ensure!(vote.status == VoteStatus::InProgress, Error::<T>::VoteNotInProgress);
+			let now = <frame_system::Pallet<T>>::block_number();
+			ensure!(now > vote.start && now < vote.end, Error::<T>::VotingWindowNotValid);
+
+			match vote_cast {
+				true => {
+					vote.yes_votes.checked_add(1).ok_or(ArithmeticError::Overflow)?;
+				},
+				false => {
+					vote.no_votes.checked_add(1).ok_or(ArithmeticError::Overflow)?;
+				},
+			}
+
+
+			QualificationVotes::<T>::insert(voting_id.clone(),&vote);
+			MemberVote::<T>::insert((who.clone(),vote_type.clone(),voting_id.clone()),vote_cast);
+			Self::deposit_event(Event::VoteCast(0,voting_id));
+
+			Ok(())
+		}
+
+		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(4,4))]
+		pub fn cast_verification_vote(origin: OriginFor<T>, voting_id: u64, vote_cast: bool) -> DispatchResult  {
+			let who = ensure_signed(origin)?;
+			ensure!(Self::ensure_contributor(who.clone()),Error::<T>::NotAContributor);
+			let vote_type = VoteType::Verification;
+			ensure!(!MemberVote::<T>::contains_key((who.clone(),vote_type.clone(),voting_id.clone())),Error::<T>::MemberAlreadyVoted);
+
+			let mut vote = Self::get_verification_vote(voting_id.clone()).ok_or(Error::<T>::VoteNotFound)?;
+			ensure!(vote.status == VoteStatus::InProgress, Error::<T>::VoteNotInProgress);
+			let now = <frame_system::Pallet<T>>::block_number();
+			ensure!(now > vote.start && now < vote.end, Error::<T>::VotingWindowNotValid);
+
+			match vote_cast {
+				true => {
+					vote.yes_votes.checked_add(1).ok_or(ArithmeticError::Overflow)?;
+				},
+				false => {
+					vote.no_votes.checked_add(1).ok_or(ArithmeticError::Overflow)?;
+				},
+			}
+
+
+			VerificationVotes::<T>::insert(voting_id.clone(),&vote);
+			MemberVote::<T>::insert((who.clone(),vote_type.clone(),voting_id.clone()),vote_cast);
+			Self::deposit_event(Event::VoteCast(0,voting_id));
+
 			Ok(())
 		}
 
