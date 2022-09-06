@@ -43,10 +43,43 @@ pub fn create_document(origin: OriginFor<T>, title: Vec<u8>, description: Vec<u8
 		format: Vec<u8>, hash: Vec<u8>) 
 ```
 
-Any submitted document has to undergo an expert review process and a community vote before being considered verified.
-Implementation so far includes storage elements,  membership setup and functions to add documents data to the blockchain.
-We are currently working on the voting mechanism and full DAO governance. We expect the first iteration of DAO testnet to
-be up and running by the end of September.
+Document verification is a two-step process with a selected committee of experts voting on the document to filter out 
+any duplicates, inauthentic or otherwise inappropriate documents. Then the full membership voting to decide if the 
+document is acceptable as a black history relic. Both voting processes are initially implemented as one person one vote
+but that'll change before the DAO is fully operational.
+
+```
+pub fn create_qualification_voting(origin: OriginFor<T>, document_id: u64)
+```
+
+```
+pub fn create_verification_voting(origin: OriginFor<T>, document_id: u64)
+```
+
+```
+pub fn cast_qualification_vote(origin: OriginFor<T>, voting_id: u64, vote_cast: bool)
+```
+
+```
+pub fn cast_verification_vote(origin: OriginFor<T>, voting_id: u64, vote_cast: bool)
+```
+
+```
+pub fn finalize_qualification_voting(origin: OriginFor<T>, voting_id: u64)
+```
+
+```
+pub fn finalize_verification_voting(origin: OriginFor<T>, voting_id: u64)
+```
+
+Voting creation, finalization, quorum and voting window functions are currently implemented 
+as sudo functions only for testing purposes. 
+
+
+
+Implementation so far includes storage elements,  membership setup, functions to add documents data to the blockchain,
+triggering voting on documents.We are currently working on the voting mechanism, vote scheduling and fully decentralized
+DAO governance. We expect the first iteration of DAO testnet to be up and running by the end of September.
 
 
 ### Install Rust Environment
