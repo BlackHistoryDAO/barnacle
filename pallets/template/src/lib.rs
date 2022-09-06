@@ -398,6 +398,7 @@ pub mod pallet {
 			};
 
 			QualificationVotes::<T>::insert(uid.clone(),&vote);
+			QualificationVotesCount::<T>::put(uid.clone());
 			Self::deposit_event(Event::QualificationVotingStarted(uid));
 
 			document.status = DocumentStatus::UnderReview;
@@ -432,6 +433,7 @@ pub mod pallet {
 			};
 
 			VerificationVotes::<T>::insert(uid.clone(),&vote);
+			VerificationVotesCount::<T>::put(uid.clone());
 			Self::deposit_event(Event::VerificationVotingStarted(uid));
 
 			document.status = DocumentStatus::VoteInProgress;
@@ -453,13 +455,10 @@ pub mod pallet {
 			let now = <frame_system::Pallet<T>>::block_number();
 			ensure!(now > vote.start && now < vote.end, Error::<T>::VotingWindowNotValid);
 
-			match vote_cast {
-				true => {
-					vote.yes_votes.checked_add(1).ok_or(ArithmeticError::Overflow)?;
-				},
-				false => {
-					vote.no_votes.checked_add(1).ok_or(ArithmeticError::Overflow)?;
-				},
+			if vote_cast {
+				vote.yes_votes = vote.yes_votes + 1;
+			} else {
+				vote.no_votes = vote.no_votes + 1;
 			}
 
 
@@ -482,19 +481,15 @@ pub mod pallet {
 			let now = <frame_system::Pallet<T>>::block_number();
 			ensure!(now > vote.start && now < vote.end, Error::<T>::VotingWindowNotValid);
 
-			match vote_cast {
-				true => {
-					vote.yes_votes.checked_add(1).ok_or(ArithmeticError::Overflow)?;
-				},
-				false => {
-					vote.no_votes.checked_add(1).ok_or(ArithmeticError::Overflow)?;
-				},
+			if vote_cast {
+				vote.yes_votes = vote.yes_votes + 1;
+			} else {
+				vote.no_votes = vote.no_votes + 1;
 			}
-
 
 			VerificationVotes::<T>::insert(voting_id.clone(),&vote);
 			MemberVote::<T>::insert((who.clone(),vote_type.clone(),voting_id.clone()),vote_cast);
-			Self::deposit_event(Event::VoteCast(0,voting_id));
+			Self::deposit_event(Event::VoteCast(1,voting_id));
 
 			Ok(())
 		}
