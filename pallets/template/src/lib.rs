@@ -548,7 +548,7 @@ pub mod pallet {
 			let mut vote = Self::get_verification_vote(voting_id.clone()).ok_or(Error::<T>::VoteNotFound)?;
 			ensure!(vote.status == VoteStatus::InProgress, Error::<T>::VoteNotInProgress);
 			let mut document = Self::get_document(vote.document_id.clone()).ok_or(Error::<T>::DocumentNotFound)?;
-			ensure!(document.status == DocumentStatus::SuccessfulReview, Error::<T>::IncorrectDocumentStatus);
+			ensure!(document.status == DocumentStatus::VoteInProgress, Error::<T>::IncorrectDocumentStatus);
 			let now = <frame_system::Pallet<T>>::block_number();
 			ensure!(now > vote.end,Error::<T>::VoteStillInProgress);
 
@@ -558,10 +558,10 @@ pub mod pallet {
 			if total_votes < quorum {
 				vote.status = VoteStatus::Failed;
 				document.status = DocumentStatus::Rejected;
-				QualificationVotes::<T>::insert(voting_id.clone(),&vote);
+				VerificationVotes::<T>::insert(voting_id.clone(),&vote);
 				Documents::<T>::insert(vote.document_id.clone(),document);
 				Self::deposit_event(Event::DocumentStatusUpdated(vote.document_id,5));
-				Self::deposit_event(Event::QualificationVotingEnded(voting_id));
+				Self::deposit_event(Event::VerificationVotingEnded(voting_id));
 
 				return Ok(());
 			}
@@ -570,18 +570,18 @@ pub mod pallet {
 				true => {
 					vote.status = VoteStatus::Passed;
 					document.status = DocumentStatus::Verified;
-					QualificationVotes::<T>::insert(voting_id.clone(),&vote);
+					VerificationVotes::<T>::insert(voting_id.clone(),&vote);
 					Documents::<T>::insert(vote.document_id.clone(),document);
 					Self::deposit_event(Event::DocumentStatusUpdated(vote.document_id,4));
-					Self::deposit_event(Event::QualificationVotingEnded(voting_id));
+					Self::deposit_event(Event::VerificationVotingEnded(voting_id));
 				},
 				false => {
 					vote.status = VoteStatus::Failed;
 					document.status = DocumentStatus::Rejected;
-					QualificationVotes::<T>::insert(voting_id.clone(),&vote);
+					VerificationVotes::<T>::insert(voting_id.clone(),&vote);
 					Documents::<T>::insert(vote.document_id.clone(),document);
 					Self::deposit_event(Event::DocumentStatusUpdated(vote.document_id,5));
-					Self::deposit_event(Event::QualificationVotingEnded(voting_id));
+					Self::deposit_event(Event::VerificationVotingEnded(voting_id));
 				},
 			}
 

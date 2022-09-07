@@ -1,5 +1,5 @@
 use crate as pallet_template;
-use frame_support::traits::{ConstU16, ConstU32, ConstU64, ConstU128};
+use frame_support::traits::{ConstU16, ConstU32, ConstU64, ConstU128,OnFinalize, OnInitialize};
 use frame_system as system;
 use sp_core::H256;
 use sp_runtime::{
@@ -71,6 +71,14 @@ impl pallet_balances::Config for Test {
 	type ExistentialDeposit = ConstU128<500>;
 	type AccountStore = System;
 	type WeightInfo = ();
+}
+
+pub fn run_to_block(n: u64) {
+	while System::block_number() < n {
+		TemplateModule::on_finalize(System::block_number());
+		System::set_block_number(System::block_number() + 1);
+		TemplateModule::on_initialize(System::block_number());
+	}
 }
 
 // Build genesis storage according to the mock runtime.

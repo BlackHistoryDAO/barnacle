@@ -120,3 +120,66 @@ fn it_creates_and_finalizes_qualification_voting_should_work() {
 		assert_ok!(TemplateModule::create_qualification_voting(Origin::root(),1));
 	});	
 }
+
+#[test]
+fn it_casts_votes_and_verifies_voting_should_work() {
+	new_test_ext().execute_with(|| {
+		//Create Three contributors
+		assert_ok!(TemplateModule::add_contributor(Origin::root(),1));
+		assert_ok!(TemplateModule::add_contributor(Origin::root(),2));
+		assert_ok!(TemplateModule::add_contributor(Origin::root(),3));
+		// Create three qualifiers
+		assert_ok!(TemplateModule::add_qualifier(Origin::root(),4));
+		assert_ok!(TemplateModule::add_qualifier(Origin::root(),5));
+		assert_ok!(TemplateModule::add_qualifier(Origin::root(),6));
+
+		// create a new document
+
+		assert_ok!(TemplateModule::create_document(Origin::signed(2),b"Doc1".to_vec(),b"Test1".to_vec(),b"pdf".to_vec(),b"https://ipfs.hash".to_vec()));
+		assert_eq!(TemplateModule::get_total_items(),1);
+
+		run_to_block(10);
+
+		// Change Qualification Window voting to 100 blocks
+		assert_ok!(TemplateModule::set_qualification_voting_window(Origin::root(),100u32));
+
+		run_to_block(15);
+
+		// Create Qualification voting for Document 1
+		assert_ok!(TemplateModule::create_qualification_voting(Origin::root(),1));
+
+		run_to_block(20);
+
+		//cast votes two Yays One nay
+		assert_ok!(TemplateModule::cast_qualification_vote(Origin::signed(4),1,true));
+		assert_ok!(TemplateModule::cast_qualification_vote(Origin::signed(5),1,true));
+		assert_ok!(TemplateModule::cast_qualification_vote(Origin::signed(6),1,false));
+
+		// Skip 100 blocks
+		run_to_block(120);
+
+		// Finalize qualification voting
+		assert_ok!(TemplateModule::finalize_qualification_voting(Origin::root(),1));
+
+		// Change Verification Voting Window to 100 blocks
+		assert_ok!(TemplateModule::set_verification_voting_window(Origin::root(),100u32));
+
+		run_to_block(150);
+
+		// Create Verification voting for Document 1
+		assert_ok!(TemplateModule::create_verification_voting(Origin::root(),1));
+
+		run_to_block(155);
+
+		//cast votes two Yays One nay
+		assert_ok!(TemplateModule::cast_verification_vote(Origin::signed(1),1,true));
+		assert_ok!(TemplateModule::cast_verification_vote(Origin::signed(2),1,true));
+		assert_ok!(TemplateModule::cast_verification_vote(Origin::signed(3),1,false));
+
+		// Skip 100 blocks
+		run_to_block(255);
+
+		// Finalize verification voting
+		assert_ok!(TemplateModule::finalize_verification_voting(Origin::root(),1));
+	});	
+}
