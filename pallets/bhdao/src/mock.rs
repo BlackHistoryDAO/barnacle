@@ -1,4 +1,4 @@
-use crate as pallet_template;
+use crate as pallet_bhdao;
 use frame_support::traits::{ConstU16, ConstU32, ConstU64, ConstU128,OnFinalize, OnInitialize};
 use frame_system as system;
 use sp_core::H256;
@@ -20,7 +20,7 @@ frame_support::construct_runtime!(
 		UncheckedExtrinsic = UncheckedExtrinsic,
 	{
 		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
-		TemplateModule: pallet_template::{Pallet, Call, Storage, Event<T>},
+		Bhdao: pallet_bhdao::{Pallet, Call, Storage, Event<T>},
 		Balances: pallet_balances,
 	}
 );
@@ -52,7 +52,7 @@ impl system::Config for Test {
 	type MaxConsumers = frame_support::traits::ConstU32<16>;
 }
 
-impl pallet_template::Config for Test {
+impl pallet_bhdao::Config for Test {
 	type Event = Event;
 	type Currency = Balances;
 }
@@ -75,9 +75,9 @@ impl pallet_balances::Config for Test {
 
 pub fn run_to_block(n: u64) {
 	while System::block_number() < n {
-		TemplateModule::on_finalize(System::block_number());
+		Bhdao::on_finalize(System::block_number());
 		System::set_block_number(System::block_number() + 1);
-		TemplateModule::on_initialize(System::block_number());
+		Bhdao::on_initialize(System::block_number());
 	}
 }
 

@@ -57,7 +57,7 @@ pub use sp_runtime::BuildStorage;
 use static_assertions::const_assert;
 
 /// Import the template pallet.
-pub use pallet_template;
+pub use pallet_bhdao;
 pub use pallet_nft;
 
 /// An index to a block.
@@ -685,7 +685,7 @@ impl pallet_sudo::Config for Runtime {
 }
 
 /// Configure the pallet-template in pallets/template.
-impl pallet_template::Config for Runtime {
+impl pallet_bhdao::Config for Runtime {
 	type Event = Event;
 	type Currency = Balances;
 }
@@ -726,9 +726,9 @@ construct_runtime!(
 		MmrLeaf: pallet_beefy_mmr,
 		Sudo: pallet_sudo,
 		// Include the custom logic from the pallet-template in the runtime.
-		TemplateModule: pallet_template,
+		Bhdao: pallet_bhdao,
 		Scheduler: pallet_scheduler,
-		NFT: pallet_nft,
+		Nft: pallet_nft,
 	}
 );
 
@@ -773,7 +773,7 @@ mod benches {
 		[frame_system, SystemBench::<Runtime>]
 		[pallet_balances, Balances]
 		[pallet_timestamp, Timestamp]
-		[pallet_template, TemplateModule]
+		[pallet_bhdao, Bhdao]
 	);
 }
 
