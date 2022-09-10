@@ -80,10 +80,9 @@ pub mod pallet {
 	#[derive(Clone, Encode, Decode, PartialEq, Debug, TypeInfo, Eq, Copy)]
 	#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 	pub enum Roles {
-		QualifierRole,
-		CollectorRole,
-		ContributorRole,
-		VerifierRole,
+		QualifierRole = 1,
+		CollectorRole = 2,
+		ContributorRole = 3,
 	}
 
 	#[derive(Clone, Encode, Decode, PartialEq, Debug, TypeInfo, Eq, Copy)]

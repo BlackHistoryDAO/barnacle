@@ -2,11 +2,20 @@
 
 pub use pallet::*;
 
+#[cfg(test)]
+mod mock;
+
+#[cfg(test)]
+mod tests;
+
 #[frame_support::pallet]
 pub mod pallet {
 	use frame_support::pallet_prelude::*;
     use frame_system::pallet_prelude::*;
 	use scale_info::TypeInfo;
+
+	use sp_runtime::ArithmeticError;
+	use sp_std::vec::Vec;
 
 	#[cfg(feature = "std")]
 	use frame_support::serde::{Deserialize, Serialize};
@@ -18,56 +27,161 @@ pub mod pallet {
 
     #[pallet::pallet]
 	#[pallet::generate_store(pub(super) trait Store)]
+	#[pallet::without_storage_info]
 	pub struct Pallet<T>(_);
 
-	pub(super) type CollectionId = u32;
-	pub(super) type TokenId = u32;
+
+	#[derive(Clone, Encode, Decode, PartialEq, Debug, TypeInfo, Eq)]
+	#[scale_info(skip_type_params(T))]
+	pub struct Collection<T:Config> {
+		pub metadata: Vec<u8>,
+		pub total_supply: u32,
+		pub created_at: T::BlockNumber,
+	}
+
+	#[derive(Clone, Encode, Decode, PartialEq, Debug, TypeInfo, Eq)]
+	#[scale_info(skip_type_params(T))]
+	pub struct Token<T:Config> {
+		pub id: u32,
+		owner: T::AccountId,
+		pub metadata: Vec<u8>,
+	}
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
-		CollectionCreated(CollectionId, T::AccountId),
-		CollectionDestroyed(CollectionId, T::AccountId),
-		NFTMinted(CollectionId, TokenId, T::AccountId),
-		NFTBurned(CollectionId, TokenId, T::AccountId),		
+		CollectionCreated(u32),
+		NFTMinted(u32, u32, T::AccountId),
+		NFTBurned(u32, u32, T::AccountId),		
 	}
 
 	// Errors inform users that something went wrong.
 	#[pallet::error]
 	pub enum Error<T> {
 		CollectionExists,
+		CollectionDoesNotExist,
 		TokenExists,
 		OneAccountOneToken,
+		TokenMaxSupplyReached,
+		TokenDoesNotExist,
+		NullValue,
+		NotTheOwner,
 	}
+
+	#[pallet::storage]
+	#[pallet::getter(fn get_total_collections)]
+	pub(super) type TotalCollections<T> = StorageValue<_, u32,ValueQuery>;
+
+	#[pallet::storage]
+	#[pallet::getter(fn get_collection)]
+	pub(super) type Collections<T:Config> = StorageMap<
+		_,
+		Blake2_128Concat,
+		u32,
+		Collection<T>,
+		OptionQuery,
+	>;
+
+	#[pallet::storage]
+	#[pallet::getter(fn get_total_tokens)]
+	pub(super) type TotalTokens<T:Config> = StorageMap<
+		_,
+		Blake2_128Concat,
+		u32,
+		u32,
+		ValueQuery,
+	>;
+
+	#[pallet::storage]
+	#[pallet::getter(fn get_active_tokens)]
+	pub(super) type ActiveTokens<T:Config> = StorageMap<
+		_,
+		Blake2_128Concat,
+		u32,
+		u32,
+		ValueQuery,
+	>;
+
+	#[pallet::storage]
+	#[pallet::getter(fn get_token)]
+	pub(super) type Tokens<T:Config> = StorageMap<
+		_,
+		Blake2_128Concat,
+		(T::AccountId,u32),
+		Token<T>,
+		OptionQuery,
+	>;
+
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
 
-		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(2,2))]
-		pub fn create_collection(origin: OriginFor<T>) -> DispatchResult {
+		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(3,3))]
+		pub fn create_collection(origin: OriginFor<T>,uid: u32, total_supply: u32, metadata: Vec<u8>) -> DispatchResult {
+			ensure_root(origin)?;// Temporary
+			//let who = ensure_signed(origin)?;
+			ensure!(!Collections::<T>::contains_key(uid.clone()),Error::<T>::CollectionExists);
+			let now = <frame_system::Pallet<T>>::block_number();
+
+			let collection = Collection::<T> {
+				metadata: metadata,
+				total_supply: total_supply,
+				created_at: now,
+			};
+
+			Collections::<T>::insert(uid.clone(),&collection);
+			let total = Self::get_total_collections().checked_add(1).ok_or(ArithmeticError::Overflow)?;
+			TotalCollections::<T>::put(total);
+
+			Self::deposit_event(Event::CollectionCreated(uid));
+			
+			Ok(())
+		}
+
+		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(5,3))]
+		pub fn mint(origin: OriginFor<T>, collection_id: u32, who: T::AccountId, metadata: Vec<u8>) -> DispatchResult {
 			ensure_root(origin)?;
-			//
+			ensure!(Collections::<T>::contains_key(collection_id.clone()),Error::<T>::CollectionDoesNotExist);
+			// Active Tokens <= total_supply
+			let mut active = Self::get_active_tokens(collection_id);
+			let collection = Self::get_collection(collection_id.clone()).unwrap();
+			ensure!(active < collection.total_supply,Error::<T>::TokenMaxSupplyReached);
+			// Ensure one Token per user policy
+			ensure!(!Tokens::<T>::contains_key((who.clone(),collection_id.clone())),Error::<T>::OneAccountOneToken);
+			//uid from total tokens
+			let uid = Self::get_total_tokens(collection_id.clone()).checked_add(1).ok_or(ArithmeticError::Overflow)?;
+
+			let token = Token::<T> {
+				id: uid.clone(),
+				metadata: metadata,
+				owner: who.clone(),
+			};
+
+			Tokens::<T>::insert((who.clone(),collection_id.clone()),token);
+			active = active + 1;
+			ActiveTokens::<T>::insert(collection_id.clone(),active);
+			TotalTokens::<T>::insert(collection_id.clone(),uid.clone());
+
+			Self::deposit_event(Event::NFTMinted(collection_id,uid,who));
+
 			Ok(())
 		}
 
 		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(2,2))]
-		pub fn destroy_collection(origin: OriginFor<T>) -> DispatchResult {
-			ensure_root(origin)?;
-			//
-			Ok(())
-		}
+		pub fn burn(origin: OriginFor<T>,collection_id: u32) -> DispatchResult {
+			let who = ensure_signed(origin)?;
+			ensure!(Tokens::<T>::contains_key((who.clone(),collection_id.clone())),Error::<T>::TokenDoesNotExist);
+			let token = Self::get_token((who.clone(),collection_id.clone())).unwrap();
+			let uid = token.id;
+			ensure!(who.clone() == token.owner,Error::<T>::NotTheOwner);
+			let mut active = Self::get_active_tokens(collection_id);
 
-		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(2,2))]
-		pub fn mint(origin: OriginFor<T>,collection: CollectionId, who: T::AccountId) -> DispatchResult {
-			ensure_root(origin)?;
-			//
-			Ok(())
-		}
+			Tokens::<T>::remove((who.clone(),collection_id.clone()));
+			active = active - 1;
+			ActiveTokens::<T>::insert(collection_id.clone(),active);
 
-		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(2,2))]
-		pub fn burn(origin: OriginFor<T>,collection: CollectionId, who: T::AccountId) -> DispatchResult {
-			ensure_root(origin)?;
-			//
+			Self::deposit_event(Event::NFTBurned(collection_id,uid,who));
+			
 			Ok(())
 		}
 	}

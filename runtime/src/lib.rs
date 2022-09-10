@@ -774,6 +774,7 @@ mod benches {
 		[pallet_balances, Balances]
 		[pallet_timestamp, Timestamp]
 		[pallet_bhdao, Bhdao]
+		[pallet_nft, Nft]
 	);
 }
 
