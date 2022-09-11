@@ -61,11 +61,11 @@ pub mod pallet {
 		CollectionExists,
 		CollectionDoesNotExist,
 		TokenExists,
+		NotTheOwner,
 		OneAccountOneToken,
 		TokenMaxSupplyReached,
 		TokenDoesNotExist,
 		NullValue,
-		NotTheOwner,
 	}
 
 	#[pallet::storage]
@@ -170,10 +170,12 @@ pub mod pallet {
 		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(2,2))]
 		pub fn burn(origin: OriginFor<T>,collection_id: u32) -> DispatchResult {
 			let who = ensure_signed(origin)?;
+			
 			ensure!(Tokens::<T>::contains_key((who.clone(),collection_id.clone())),Error::<T>::TokenDoesNotExist);
-			let token = Self::get_token((who.clone(),collection_id.clone())).unwrap();
+			let token = Self::get_token((who.clone(),collection_id.clone())).ok_or(Error::<T>::NullValue)?;
+			
 			let uid = token.id;
-			ensure!(who.clone() == token.owner,Error::<T>::NotTheOwner);
+			
 			let mut active = Self::get_active_tokens(collection_id);
 
 			Tokens::<T>::remove((who.clone(),collection_id.clone()));
