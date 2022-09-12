@@ -27,6 +27,7 @@ sp-std = { default-features = false, git = "https://github.com/paritytech/substr
 sp-core = { default-features = false, version = "6.0.0", git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.18" }
 sp-io = { default-features = false, version = "6.0.0", git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.18" }
 sp-runtime = { default-features = false, version = "6.0.0", git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.18" }
+pallet-nft = { path = '../nft', default-features = false }
 
 
 [features]
@@ -40,6 +41,7 @@ std = [
 	'pallet-balances/std',
 	'pallet-randomness-collective-flip/std',
 	"pallet-scheduler/std",
+	"pallet-nft/std",
 	'serde/std',
 	'sp-std/std',
 	'sp-core/std',

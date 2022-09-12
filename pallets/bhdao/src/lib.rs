@@ -115,7 +115,7 @@ pub mod pallet {
 
 	/// Configure the pallet by specifying the parameters and types on which it depends.
 	#[pallet::config]
-	pub trait Config: frame_system::Config {
+	pub trait Config: frame_system::Config +pallet_nft::Config {
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 		type Currency: Currency<Self::AccountId>;
 	}
@@ -231,6 +231,37 @@ pub mod pallet {
 	#[pallet::getter(fn get_all_contributors)]
 	pub(super) type Contributors<T:Config> = StorageValue<_, Vec<T::AccountId>, ValueQuery>;
 
+	#[pallet::genesis_config]
+	pub struct GenesisConfig<T: Config> {
+		pub init_qualifiers_count: u32,
+		pub init_collectors_count: u32,
+		pub init_contributors_count: u32,
+		pub init_qualifiers: Vec<T::AccountId>,
+		pub init_collectors: Vec<T::AccountId>,
+		pub init_contributors: Vec<T::AccountId>,
+	}
+
+	#[cfg(feature = "std")]
+	impl<T: Config> Default for GenesisConfig<T> {
+		fn default() -> Self {
+			Self { init_qualifiers: Default::default(), init_collectors: Default::default(),
+				 init_contributors:  Default::default(), init_qualifiers_count: Default::default(), 
+				 init_collectors_count: Default::default(), init_contributors_count:  Default::default()}
+		}
+	}
+
+	#[pallet::genesis_build]
+	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
+		fn build(&self) {	
+			<QualifiersCount<T>>::put(&self.init_qualifiers_count);
+			<CollectorsCount<T>>::put(&self.init_collectors_count);
+			<ContributorsCount<T>>::put(&self.init_contributors_count);		
+			<Qualifiers<T>>::put(&self.init_qualifiers);
+			<Collectors<T>>::put(&self.init_collectors);
+			<Contributors<T>>::put(&self.init_contributors);
+		}
+	}
+
 	// Pallets use events to inform users when important changes are made.
 	// https://docs.substrate.io/v3/runtime/events-and-errors
 	#[pallet::event]
@@ -282,6 +313,25 @@ pub mod pallet {
 	// Dispatchable functions must be annotated with a weight and must return a DispatchResult.
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
+		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(4,3))]
+		pub fn init_collections(origin: OriginFor<T>) -> DispatchResult {
+			ensure_root(origin.clone())?;
+			let max_qualifiers: u32 = 200;
+			let max_collectors : u32 = 100;
+			let max_contributors : u32 = 1000;
+
+			// create qualifiers collection
+			pallet_nft::Pallet::<T>::create_collection(origin.clone(),Roles::QualifierRole as u32,max_qualifiers,b"Qualifiers".to_vec());
+
+			//create collectors collection
+			pallet_nft::Pallet::<T>::create_collection(origin.clone(),Roles::CollectorRole as u32,max_collectors,b"Collectors".to_vec());
+
+			//create contributors collection
+			pallet_nft::Pallet::<T>::create_collection(origin.clone(),Roles::ContributorRole as u32,max_contributors,b"Contributors".to_vec());
+
+			Ok(())
+		}
+
 		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(4,3))]
 		pub fn add_qualifier(origin: OriginFor<T>, who: T::AccountId) -> DispatchResult {
 			ensure_root(origin)?;

@@ -2,7 +2,7 @@ use appchain_barnacle_runtime::{
 	opaque::{Block, SessionKeys},
 	AccountId, BabeConfig, Balance, BalancesConfig, GenesisConfig, GrandpaConfig, ImOnlineConfig,
 	OctopusAppchainConfig, OctopusLposConfig, SessionConfig, Signature, SudoConfig, SystemConfig,
-	DOLLARS, WASM_BINARY,
+	BhdaoConfig,DOLLARS, WASM_BINARY,
 };
 use beefy_primitives::crypto::AuthorityId as BeefyId;
 use pallet_im_online::sr25519::AuthorityId as ImOnlineId;
@@ -182,6 +182,29 @@ fn testnet_genesis(
 			get_account_id_from_seed::<sr25519::Public>("Ferdie"),
 		]
 	});
+
+	const to_init_qualifiers_count: u32 = 3;
+	const to_init_collectors_count: u32 = 1;
+	const to_init_contributors_count: u32 = 3;
+
+	let to_init_qualifiers: Vec<AccountId> =
+	vec![
+		get_account_id_from_seed::<sr25519::Public>("Alice"),
+		get_account_id_from_seed::<sr25519::Public>("Bob"),
+		get_account_id_from_seed::<sr25519::Public>("Charlie"),
+	];
+
+	let to_init_collectors: Vec<AccountId> =
+	vec![
+		get_account_id_from_seed::<sr25519::Public>("Alice"),
+	];
+
+	let to_init_contributors: Vec<AccountId> =
+	vec![
+		get_account_id_from_seed::<sr25519::Public>("Dave"),
+		get_account_id_from_seed::<sr25519::Public>("Eve"),
+		get_account_id_from_seed::<sr25519::Public>("Ferdie"),
+	];
 	// endow all authorities.
 	initial_authorities.iter().map(|x| &x.0).for_each(|x| {
 		if !endowed_accounts.contains(x) {
@@ -237,5 +260,13 @@ fn testnet_genesis(
 		},
 		octopus_lpos: OctopusLposConfig { era_payout: 2 * DOLLARS, ..Default::default() },
 		octopus_assets: Default::default(),
+		bhdao: BhdaoConfig {
+			init_qualifiers_count: to_init_qualifiers_count,
+			init_collectors_count: to_init_collectors_count,
+			init_contributors_count: to_init_contributors_count,
+			init_qualifiers: to_init_qualifiers.iter().cloned().map(|x| x).collect(),
+			init_collectors: to_init_collectors.iter().cloned().map(|x| x).collect(),
+			init_contributors: to_init_contributors.iter().cloned().map(|x| x).collect(),
+		}
 	}
 }

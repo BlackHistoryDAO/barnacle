@@ -4234,6 +4234,7 @@ dependencies = [
  "frame-support",
  "frame-system",
  "pallet-balances",
+ "pallet-nft",
  "pallet-randomness-collective-flip",
  "pallet-scheduler",
  "parity-scale-codec",
