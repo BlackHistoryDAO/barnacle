@@ -77,7 +77,7 @@ as sudo functions only for testing purposes.
 
 
 
-Implementation so far includes storage elements,  membership setup, functions to add documents data to the blockchain,
+Implementation so far includes storage elements,  membership setup and management using non-transferable NFTs, functions to add documents data to the blockchain,
 triggering voting on documents.We are currently working on the voting mechanism, vote scheduling and fully decentralized
 DAO governance. We expect the first iteration of DAO testnet to be up and running by the end of September.
 
