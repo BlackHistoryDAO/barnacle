@@ -1,8 +1,8 @@
-# Black History DAO Appchain Substrate Node
+# Black History DAO Blockchain Substrate Node
 
-This DAO Appchain is being built on Barnacle Node.
+This DAO Blockchain is being built on substrate Node.
 
-## Appchain Overview
+## Blockchain Overview
 
 Black History DAO aims to collect, preserve and share the real stories of Black history and anchoring them on the blockchain. The documents and stories are meant to be verified by the Black History DAO community and appointed by vote experts. Once approved, the data will be stored as a structure on the blockchain and IPFS.
 
@@ -77,7 +77,7 @@ as sudo functions only for testing purposes.
 
 
 
-Implementation so far includes storage elements,  membership setup, functions to add documents data to the blockchain,
+Implementation so far includes storage elements,  membership setup and management using non-transferable NFTs, functions to add documents data to the blockchain,
 triggering voting on documents.We are currently working on the voting mechanism, vote scheduling and fully decentralized
 DAO governance. We expect the first iteration of DAO testnet to be up and running by the end of September.
 
