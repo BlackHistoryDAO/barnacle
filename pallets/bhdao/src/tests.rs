@@ -89,7 +89,8 @@ fn it_creates_qualification_voting_should_work() {
 		assert_ok!(Bhdao::add_contributor(Origin::root(),2));
 		assert_ok!(Bhdao::create_document(Origin::signed(2),b"Doc1".to_vec(),b"Test1".to_vec(),b"pdf".to_vec(),b"https://ipfs.hash".to_vec()));
 		assert_eq!(Bhdao::get_total_items(),1);
-		assert_ok!(Bhdao::create_qualification_voting(Origin::root(),1));
+		assert_ok!(Bhdao::add_qualifier(Origin::root(),4));
+		assert_ok!(Bhdao::create_qualification_voting(Origin::signed(4),1));
 	});	
 }
 
@@ -117,7 +118,8 @@ fn it_creates_and_finalizes_qualification_voting_should_work() {
 		assert_ok!(Bhdao::add_contributor(Origin::root(),2));
 		assert_ok!(Bhdao::create_document(Origin::signed(2),b"Doc1".to_vec(),b"Test1".to_vec(),b"pdf".to_vec(),b"https://ipfs.hash".to_vec()));
 		assert_eq!(Bhdao::get_total_items(),1);
-		assert_ok!(Bhdao::create_qualification_voting(Origin::root(),1));
+		assert_ok!(Bhdao::add_qualifier(Origin::root(),4));
+		assert_ok!(Bhdao::create_qualification_voting(Origin::signed(4),1));
 	});	
 }
 
@@ -146,7 +148,7 @@ fn it_casts_votes_and_verifies_voting_should_work() {
 		run_to_block(15);
 
 		// Create Qualification voting for Document 1
-		assert_ok!(Bhdao::create_qualification_voting(Origin::root(),1));
+		assert_ok!(Bhdao::create_qualification_voting(Origin::signed(4),1));
 
 		run_to_block(20);
 
@@ -159,7 +161,7 @@ fn it_casts_votes_and_verifies_voting_should_work() {
 		run_to_block(120);
 
 		// Finalize qualification voting
-		assert_ok!(Bhdao::finalize_qualification_voting(Origin::root(),1));
+		assert_ok!(Bhdao::finalize_qualification_voting(Origin::signed(4),1));
 
 		// Change Verification Voting Window to 100 blocks
 		assert_ok!(Bhdao::set_verification_voting_window(Origin::root(),100u32));
@@ -167,7 +169,7 @@ fn it_casts_votes_and_verifies_voting_should_work() {
 		run_to_block(150);
 
 		// Create Verification voting for Document 1
-		assert_ok!(Bhdao::create_verification_voting(Origin::root(),1));
+		assert_ok!(Bhdao::create_verification_voting(Origin::signed(2),1));
 
 		run_to_block(155);
 
@@ -180,6 +182,6 @@ fn it_casts_votes_and_verifies_voting_should_work() {
 		run_to_block(255);
 
 		// Finalize verification voting
-		assert_ok!(Bhdao::finalize_verification_voting(Origin::root(),1));
+		assert_ok!(Bhdao::finalize_verification_voting(Origin::signed(2),1));
 	});	
 }

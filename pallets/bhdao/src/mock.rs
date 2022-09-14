@@ -22,6 +22,7 @@ frame_support::construct_runtime!(
 		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
 		Bhdao: pallet_bhdao::{Pallet, Call, Storage, Event<T>},
 		Balances: pallet_balances,
+		Nft: pallet_nft,
 	}
 );
 
@@ -57,7 +58,9 @@ impl pallet_bhdao::Config for Test {
 	type Currency = Balances;
 }
 
-
+impl pallet_nft::Config for Test {
+	type Event = Event;
+}
 
 impl pallet_balances::Config for Test {
 	type MaxLocks = ConstU32<50>;

@@ -36,6 +36,7 @@ pub mod pallet {
 	pub struct Collection<T:Config> {
 		pub total_supply: u32,
 		pub created_at: T::BlockNumber,
+		pub metadata: Vec<u8>,
 	}
 
 	#[derive(Clone, Encode, Decode, PartialEq, Debug, TypeInfo, Eq)]
@@ -140,13 +141,13 @@ pub mod pallet {
 		fn build(&self) {	
 			let mut index: u32 = 1;
 			Collections::<T>::insert(index.clone(), Collection::<T> {total_supply: self.init_max_qualifiers,
-				 created_at: self.init_block.clone()});
+				 created_at: self.init_block.clone(), metadata: b"Qualifiers".to_vec()});
 			index = index + 1;
 			Collections::<T>::insert(index.clone(), Collection::<T> {total_supply: self.init_max_collectors, 
-				created_at: self.init_block.clone()});
+				created_at: self.init_block.clone(), metadata: b"Collectors".to_vec()});
 			index = index + 1;
 			Collections::<T>::insert(index.clone(), Collection::<T> {total_supply: self.init_max_contributors,
-				 created_at: self.init_block.clone()});
+				 created_at: self.init_block.clone(), metadata: b"Contributors".to_vec()});
 		
 			let total_collections = 3;
 
@@ -202,7 +203,7 @@ pub mod pallet {
 	impl<T: Config> Pallet<T> {
 
 		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(3,3))]
-		pub fn create_collection(origin: OriginFor<T>,uid: u32, total_supply: u32) -> DispatchResult {
+		pub fn create_collection(origin: OriginFor<T>,uid: u32, total_supply: u32, metadata: Vec<u8>) -> DispatchResult {
 			ensure_root(origin)?;// Temporary
 			//let who = ensure_signed(origin)?;
 			ensure!(!Collections::<T>::contains_key(uid.clone()),Error::<T>::CollectionExists);
@@ -211,6 +212,7 @@ pub mod pallet {
 			let collection = Collection::<T> {
 				total_supply: total_supply,
 				created_at: now,
+				metadata: metadata,
 			};
 
 			Collections::<T>::insert(uid.clone(),&collection);

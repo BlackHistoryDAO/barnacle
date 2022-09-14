@@ -296,6 +296,7 @@ pub mod pallet {
 		NotAQualifier,
 		NotACollector,
 		NotAContributor,
+		NotAuthorized,
 		DocumentNotFound,
 		IncorrectDocumentStatus,
 		DocumentTitleNotProvided,
@@ -325,13 +326,13 @@ pub mod pallet {
 			let max_contributors : u32 = 1000;
 
 			// create qualifiers collection
-			pallet_nft::Pallet::<T>::create_collection(origin.clone(),Roles::QualifierRole as u32,max_qualifiers);
+			pallet_nft::Pallet::<T>::create_collection(origin.clone(),Roles::QualifierRole as u32,max_qualifiers,b"Qualifiers".to_vec());
 
 			//create collectors collection
-			pallet_nft::Pallet::<T>::create_collection(origin.clone(),Roles::CollectorRole as u32,max_collectors);
+			pallet_nft::Pallet::<T>::create_collection(origin.clone(),Roles::CollectorRole as u32,max_collectors,b"Collectors".to_vec());
 
 			//create contributors collection
-			pallet_nft::Pallet::<T>::create_collection(origin.clone(),Roles::ContributorRole as u32,max_contributors);
+			pallet_nft::Pallet::<T>::create_collection(origin.clone(),Roles::ContributorRole as u32,max_contributors,b"Contributors".to_vec());
 
 			Ok(())
 		}
@@ -435,7 +436,8 @@ pub mod pallet {
 		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(4,4))]
 		pub fn create_qualification_voting(origin: OriginFor<T>, document_id: u64) -> DispatchResult{
 
-			ensure_root(origin)?;
+			let who = ensure_signed(origin)?;
+			ensure!(Self::ensure_qualifier(who.clone()),Error::<T>::NotAQualifier);
 
 			let mut document = Self::get_document(document_id.clone()).ok_or(Error::<T>::DocumentNotFound)?;
 
@@ -470,7 +472,8 @@ pub mod pallet {
 		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(4,4))]
 		pub fn create_verification_voting(origin: OriginFor<T>, document_id: u64) -> DispatchResult{
 
-			ensure_root(origin)?;
+			let who = ensure_signed(origin)?;
+			ensure!(Self::ensure_qualifier(who.clone()) || Self::ensure_contributor(who.clone()),Error::<T>::NotAuthorized);
 
 			let mut document = Self::get_document(document_id.clone()).ok_or(Error::<T>::DocumentNotFound)?;
 
@@ -555,7 +558,8 @@ pub mod pallet {
 
 		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(4,4))]
 		pub fn finalize_qualification_voting(origin: OriginFor<T>, voting_id: u64) -> DispatchResult {
-			ensure_root(origin)?;
+			let who = ensure_signed(origin)?;
+			ensure!(Self::ensure_qualifier(who.clone()),Error::<T>::NotAQualifier);
 
 			let mut vote = Self::get_qualification_vote(voting_id.clone()).ok_or(Error::<T>::VoteNotFound)?;
 			ensure!(vote.status == VoteStatus::InProgress, Error::<T>::VoteNotInProgress);
@@ -602,7 +606,8 @@ pub mod pallet {
 
 		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(4,4))]
 		pub fn finalize_verification_voting(origin: OriginFor<T>, voting_id: u64) -> DispatchResult {
-			ensure_root(origin)?;
+			let who = ensure_signed(origin)?;
+			ensure!(Self::ensure_qualifier(who.clone()) || Self::ensure_contributor(who.clone()),Error::<T>::NotAuthorized);
 
 			let mut vote = Self::get_verification_vote(voting_id.clone()).ok_or(Error::<T>::VoteNotFound)?;
 			ensure!(vote.status == VoteStatus::InProgress, Error::<T>::VoteNotInProgress);

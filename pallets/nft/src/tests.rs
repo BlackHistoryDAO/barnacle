@@ -21,7 +21,7 @@ fn it_mints_a_token_should_work() {
         //Check # of tokens for collection 1
         assert_eq!(Nft::get_active_tokens(1u32),0u32);
 		//Mint a token
-        assert_ok!(Nft::mint(Origin::root(),1,1,b"Token1".to_vec()));
+        assert_ok!(Nft::mint(Origin::root(),1,1));
         // # of total tokens should increase by 1
         assert_eq!(Nft::get_active_tokens(1u32),1u32);
 
@@ -37,11 +37,11 @@ fn it_mints_a_token_should_fail_1() {
         //Check # of tokens for collection 1
         assert_eq!(Nft::get_active_tokens(1u32),0u32);
 		//Mint a token
-        assert_ok!(Nft::mint(Origin::root(),1,1,b"Token1".to_vec()));
+        assert_ok!(Nft::mint(Origin::root(),1,1));
         
 		// Mint a second token to the same address
 
-		assert_noop!(Nft::mint(Origin::root(),1,1,b"Token2".to_vec()), Error::<Test>::OneAccountOneToken);
+		assert_noop!(Nft::mint(Origin::root(),1,1), Error::<Test>::OneAccountOneToken);
 
 	});
 }
@@ -55,11 +55,11 @@ fn it_mints_a_token_should_fail_2() {
         //Check # of tokens for collection 1
         assert_eq!(Nft::get_active_tokens(1u32),0u32);
 		//Mint a token
-        assert_ok!(Nft::mint(Origin::root(),1,1,b"Token1".to_vec()));
+        assert_ok!(Nft::mint(Origin::root(),1,1));
         
 		// Mint a second token to the same address
 
-		assert_noop!(Nft::mint(Origin::root(),1,2,b"Token2".to_vec()), Error::<Test>::TokenMaxSupplyReached);
+		assert_noop!(Nft::mint(Origin::root(),1,2), Error::<Test>::TokenMaxSupplyReached);
 
 	});
 }
@@ -73,7 +73,7 @@ fn it_burns_a_token_should_work() {
         
         assert_eq!(Nft::get_active_tokens(1u32),0u32);
 		//Mint a token
-        assert_ok!(Nft::mint(Origin::root(),1,1,b"Token1".to_vec()));
+        assert_ok!(Nft::mint(Origin::root(),1,1));
         // Verify that that coount increases by 1
         assert_eq!(Nft::get_active_tokens(1u32),1u32);
 		// Token holder burns the token
@@ -92,7 +92,7 @@ fn it_burns_a_token_should_fail() {
         
         assert_eq!(Nft::get_active_tokens(1u32),0u32);
 		//Mint a token
-        assert_ok!(Nft::mint(Origin::root(),1,1,b"Token1".to_vec()));
+        assert_ok!(Nft::mint(Origin::root(),1,1));
         // Verify that that coount increases by 1
         assert_eq!(Nft::get_active_tokens(1u32),1u32);
 		// Token holder burns the token
