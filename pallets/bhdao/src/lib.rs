@@ -338,7 +338,7 @@ pub mod pallet {
 
 		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(4,3))]
 		pub fn add_qualifier(origin: OriginFor<T>, who: T::AccountId) -> DispatchResult {
-			ensure_root(origin)?;
+			ensure_root(origin.clone())?;
 			let mut qualifiers = Qualifiers::<T>::get();
 
 			let uid = Self::qualifiers_uid_count().checked_add(1).ok_or(ArithmeticError::Overflow)?;
@@ -349,6 +349,8 @@ pub mod pallet {
 					qualifiers.insert(index, who.clone());
 					Qualifiers::<T>::put(qualifiers);
 					QualifiersCount::<T>::put(uid.clone());
+					//mint NFT
+					pallet_nft::Pallet::<T>::mint(origin.clone(),Roles::QualifierRole as u32,who.clone());
 					Self::deposit_event(Event::QualifierAdded(who,uid));
 					Ok(())
 				}
@@ -358,7 +360,7 @@ pub mod pallet {
 
 		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(4,3))]
 		pub fn add_collector(origin: OriginFor<T>, who: T::AccountId) -> DispatchResult {
-			ensure_root(origin)?;
+			ensure_root(origin.clone())?;
 			let mut collectors = Collectors::<T>::get();
 
 			let uid = Self::collectors_uid_count().checked_add(1).ok_or(ArithmeticError::Overflow)?;
@@ -369,6 +371,8 @@ pub mod pallet {
 					collectors.insert(index, who.clone());
 					Collectors::<T>::put(collectors);
 					CollectorsCount::<T>::put(uid.clone());
+					//mint NFT
+					pallet_nft::Pallet::<T>::mint(origin.clone(),Roles::CollectorRole as u32,who.clone());
 					Self::deposit_event(Event::CollectorAdded(who,uid));
 					Ok(())
 				}
@@ -378,7 +382,7 @@ pub mod pallet {
 
 		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(4,3))]
 		pub fn add_contributor(origin: OriginFor<T>, who: T::AccountId) -> DispatchResult {
-			ensure_root(origin)?;
+			ensure_root(origin.clone())?;
 			let mut contributors = Contributors::<T>::get();
 
 			let uid = Self::contributors_uid_count().checked_add(1).ok_or(ArithmeticError::Overflow)?;
@@ -389,6 +393,8 @@ pub mod pallet {
 					contributors.insert(index, who.clone());
 					Contributors::<T>::put(contributors);
 					ContributorsCount::<T>::put(uid.clone());
+					//mint NFT
+					pallet_nft::Pallet::<T>::mint(origin.clone(),Roles::ContributorRole as u32,who.clone());
 					Self::deposit_event(Event::ContributorAdded(who,uid));
 					Ok(())
 				}
