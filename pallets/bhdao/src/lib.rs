@@ -126,6 +126,10 @@ pub mod pallet {
 	pub struct Pallet<T>(_);
 
 	#[pallet::storage]
+	#[pallet::getter(fn get_key)]
+	pub(super) type Key<T:Config> = StorageValue<_, T::AccountId,OptionQuery>;
+
+	#[pallet::storage]
 	#[pallet::getter(fn get_total_items)]
 	pub(super) type TotalItems<T> = StorageValue<_, u64,ValueQuery>;
 
@@ -321,13 +325,13 @@ pub mod pallet {
 			let max_contributors : u32 = 1000;
 
 			// create qualifiers collection
-			pallet_nft::Pallet::<T>::create_collection(origin.clone(),Roles::QualifierRole as u32,max_qualifiers,b"Qualifiers".to_vec());
+			pallet_nft::Pallet::<T>::create_collection(origin.clone(),Roles::QualifierRole as u32,max_qualifiers);
 
 			//create collectors collection
-			pallet_nft::Pallet::<T>::create_collection(origin.clone(),Roles::CollectorRole as u32,max_collectors,b"Collectors".to_vec());
+			pallet_nft::Pallet::<T>::create_collection(origin.clone(),Roles::CollectorRole as u32,max_collectors);
 
 			//create contributors collection
-			pallet_nft::Pallet::<T>::create_collection(origin.clone(),Roles::ContributorRole as u32,max_contributors,b"Contributors".to_vec());
+			pallet_nft::Pallet::<T>::create_collection(origin.clone(),Roles::ContributorRole as u32,max_contributors);
 
 			Ok(())
 		}

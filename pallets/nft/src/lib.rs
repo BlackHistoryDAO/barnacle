@@ -34,7 +34,6 @@ pub mod pallet {
 	#[derive(Clone, Encode, Decode, PartialEq, Debug, TypeInfo, Eq)]
 	#[scale_info(skip_type_params(T))]
 	pub struct Collection<T:Config> {
-		pub metadata: Vec<u8>,
 		pub total_supply: u32,
 		pub created_at: T::BlockNumber,
 	}
@@ -43,8 +42,7 @@ pub mod pallet {
 	#[scale_info(skip_type_params(T))]
 	pub struct Token<T:Config> {
 		pub id: u32,
-		owner: T::AccountId,
-		pub metadata: Vec<u8>,
+		pub owner: T::AccountId,
 	}
 
 	#[pallet::event]
@@ -112,19 +110,105 @@ pub mod pallet {
 		OptionQuery,
 	>;
 
+	#[pallet::genesis_config]
+	pub struct GenesisConfig<T: Config> {
+		pub init_qualifiers_count: u32,
+		pub init_collectors_count: u32,
+		pub init_contributors_count: u32,
+		pub init_block: T::BlockNumber,
+		pub init_max_qualifiers: u32,
+		pub init_max_collectors: u32,
+		pub init_max_contributors: u32,
+		pub init_qualifiers: Vec<T::AccountId>,
+		pub init_collectors: Vec<T::AccountId>,
+		pub init_contributors: Vec<T::AccountId>,
+	}
+
+	#[cfg(feature = "std")]
+	impl<T: Config> Default for GenesisConfig<T> {
+		fn default() -> Self {
+			Self { init_qualifiers_count: Default::default(), init_collectors_count: Default::default(),
+				init_contributors_count: Default::default(), init_block: Default::default(),
+				init_max_qualifiers: Default::default(), init_max_collectors: Default::default(),
+				init_max_contributors: Default::default(), init_contributors:  Default::default(),
+				init_qualifiers: Default::default(), init_collectors: Default::default()}
+		}
+	}
+
+	#[pallet::genesis_build]
+	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
+		fn build(&self) {	
+			let mut index: u32 = 1;
+			Collections::<T>::insert(index.clone(), Collection::<T> {total_supply: self.init_max_qualifiers,
+				 created_at: self.init_block.clone()});
+			index = index + 1;
+			Collections::<T>::insert(index.clone(), Collection::<T> {total_supply: self.init_max_collectors, 
+				created_at: self.init_block.clone()});
+			index = index + 1;
+			Collections::<T>::insert(index.clone(), Collection::<T> {total_supply: self.init_max_contributors,
+				 created_at: self.init_block.clone()});
+		
+			let total_collections = 3;
+
+			TotalCollections::<T>::put(total_collections);
+
+			let mut collection_id: u32 = 1;
+
+			index = 1;
+
+			for item in &self.init_qualifiers {
+				Tokens::<T>::insert((item.clone(),collection_id.clone()), Token::<T> {
+					id: index.clone(),
+					owner: item.clone(),
+				});
+				index = index + 1;
+			}
+
+			TotalTokens::<T>::insert(collection_id.clone(),&self.init_qualifiers_count);
+			ActiveTokens::<T>::insert(collection_id.clone(),&self.init_qualifiers_count);
+
+			collection_id = collection_id + 1;
+			index = 1;
+
+			for item in &self.init_collectors {
+				Tokens::<T>::insert((item.clone(),collection_id.clone()), Token::<T> {
+					id: index.clone(),
+					owner: item.clone(),
+				});
+				index = index + 1;
+			}
+
+			TotalTokens::<T>::insert(collection_id.clone(),&self.init_collectors_count);
+			ActiveTokens::<T>::insert(collection_id.clone(),&self.init_collectors_count);
+
+			collection_id = collection_id + 1;
+			index = 1;
+
+			for item in &self.init_contributors {
+				Tokens::<T>::insert((item.clone(),collection_id.clone()), Token::<T> {
+					id: index.clone(),
+					owner: item.clone(),
+				});
+				index = index + 1;
+			}
+
+			TotalTokens::<T>::insert(collection_id.clone(),&self.init_contributors_count);
+			ActiveTokens::<T>::insert(collection_id.clone(),&self.init_contributors_count);
+
+		}
+	}
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
 
 		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(3,3))]
-		pub fn create_collection(origin: OriginFor<T>,uid: u32, total_supply: u32, metadata: Vec<u8>) -> DispatchResult {
+		pub fn create_collection(origin: OriginFor<T>,uid: u32, total_supply: u32) -> DispatchResult {
 			ensure_root(origin)?;// Temporary
 			//let who = ensure_signed(origin)?;
 			ensure!(!Collections::<T>::contains_key(uid.clone()),Error::<T>::CollectionExists);
 			let now = <frame_system::Pallet<T>>::block_number();
 
 			let collection = Collection::<T> {
-				metadata: metadata,
 				total_supply: total_supply,
 				created_at: now,
 			};
@@ -139,7 +223,7 @@ pub mod pallet {
 		}
 
 		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(5,3))]
-		pub fn mint(origin: OriginFor<T>, collection_id: u32, who: T::AccountId, metadata: Vec<u8>) -> DispatchResult {
+		pub fn mint(origin: OriginFor<T>, collection_id: u32, who: T::AccountId) -> DispatchResult {
 			ensure_root(origin)?;
 			ensure!(Collections::<T>::contains_key(collection_id.clone()),Error::<T>::CollectionDoesNotExist);
 			// Active Tokens <= total_supply
@@ -153,7 +237,6 @@ pub mod pallet {
 
 			let token = Token::<T> {
 				id: uid.clone(),
-				metadata: metadata,
 				owner: who.clone(),
 			};
 

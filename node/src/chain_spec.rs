@@ -1,8 +1,8 @@
 use appchain_barnacle_runtime::{
 	opaque::{Block, SessionKeys},
-	AccountId, BabeConfig, Balance, BalancesConfig, GenesisConfig, GrandpaConfig, ImOnlineConfig,
+	AccountId, BabeConfig, Balance,BlockNumber, BalancesConfig, GenesisConfig, GrandpaConfig, ImOnlineConfig,
 	OctopusAppchainConfig, OctopusLposConfig, SessionConfig, Signature, SudoConfig, SystemConfig,
-	BhdaoConfig,DOLLARS, WASM_BINARY,
+	BhdaoConfig,NftConfig, DOLLARS, WASM_BINARY,
 };
 use beefy_primitives::crypto::AuthorityId as BeefyId;
 use pallet_im_online::sr25519::AuthorityId as ImOnlineId;
@@ -187,6 +187,12 @@ fn testnet_genesis(
 	const to_init_collectors_count: u32 = 1;
 	const to_init_contributors_count: u32 = 3;
 
+	const to_init_max_qualifiers: u32 = 200;
+	const to_init_max_collectors: u32 = 100;
+	const to_init_max_contributors: u32 = 10000;
+
+	const to_init_block: BlockNumber = 1;
+
 	let to_init_qualifiers: Vec<AccountId> =
 	vec![
 		get_account_id_from_seed::<sr25519::Public>("Alice"),
@@ -243,7 +249,7 @@ fn testnet_genesis(
 				})
 				.collect::<Vec<_>>(),
 		},
-		sudo: SudoConfig { key: Some(root_key) },
+		sudo: SudoConfig { key: Some(root_key.clone()) },
 		babe: BabeConfig {
 			authorities: vec![],
 			epoch_config: Some(appchain_barnacle_runtime::BABE_GENESIS_EPOCH_CONFIG),
@@ -267,6 +273,18 @@ fn testnet_genesis(
 			init_qualifiers: to_init_qualifiers.iter().cloned().map(|x| x).collect(),
 			init_collectors: to_init_collectors.iter().cloned().map(|x| x).collect(),
 			init_contributors: to_init_contributors.iter().cloned().map(|x| x).collect(),
-		}
+		},
+		nft: NftConfig {
+			init_qualifiers_count: to_init_qualifiers_count,
+			init_collectors_count: to_init_collectors_count,
+			init_contributors_count: to_init_contributors_count,
+			init_block: to_init_block,
+			init_max_qualifiers: to_init_max_qualifiers,
+			init_max_collectors: to_init_max_collectors,
+			init_max_contributors: to_init_max_contributors,
+			init_qualifiers: to_init_qualifiers.iter().cloned().map(|x| x).collect(),
+			init_collectors: to_init_collectors.iter().cloned().map(|x| x).collect(),
+			init_contributors: to_init_contributors.iter().cloned().map(|x| x).collect(),
+		},
 	}
 }
