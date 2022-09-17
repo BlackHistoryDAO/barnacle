@@ -5,7 +5,7 @@ This DAO Blockchain is being built on substrate Node.
 ### Docker Image
 
 ```
-docker pull rafathsn/dao
+docker pull rafathsn/bhdao
 docker run -it --rm -p 127.0.0.1:9944:9944 rafathsn/bhdao
 ```
 
