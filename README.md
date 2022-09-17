@@ -2,6 +2,13 @@
 
 This DAO Blockchain is being built on substrate Node.
 
+### Docker Image
+
+```
+docker pull rafathsn/bhdao
+docker run -it --rm -p 127.0.0.1:9944:9944 rafathsn/bhdao
+```
+
 ## Blockchain Overview
 
 Black History DAO aims to collect, preserve and share the real stories of Black history and anchoring them on the blockchain. The documents and stories are meant to be verified by the Black History DAO community and appointed by vote experts. Once approved, the data will be stored as a structure on the blockchain and IPFS.
