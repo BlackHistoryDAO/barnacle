@@ -2,7 +2,7 @@ use appchain_barnacle_runtime::{
 	opaque::{Block, SessionKeys},
 	AccountId, BabeConfig, Balance,BlockNumber, BalancesConfig, GenesisConfig, GrandpaConfig, ImOnlineConfig,
 	OctopusAppchainConfig, OctopusLposConfig, SessionConfig, Signature, SudoConfig, SystemConfig,
-	BhdaoConfig,NftConfig, DOLLARS, WASM_BINARY,
+	 DOLLARS, WASM_BINARY,
 };
 use beefy_primitives::crypto::AuthorityId as BeefyId;
 use pallet_im_online::sr25519::AuthorityId as ImOnlineId;
@@ -103,7 +103,12 @@ pub fn development_config() -> Result<ChainSpec, String> {
 				get_account_id_from_seed::<sr25519::Public>("Alice"),
 				// Pre-funded accounts
 				Some(vec![
-					get_account_id_from_seed::<sr25519::Public>("Alice")
+					get_account_id_from_seed::<sr25519::Public>("Alice"),
+					get_account_id_from_seed::<sr25519::Public>("Bob"),
+					get_account_id_from_seed::<sr25519::Public>("Charlie"),
+					get_account_id_from_seed::<sr25519::Public>("Dave"),
+					get_account_id_from_seed::<sr25519::Public>("Eve"),
+					get_account_id_from_seed::<sr25519::Public>("Ferdie"),
 				]),
 				true,
 			)
@@ -183,34 +188,6 @@ fn testnet_genesis(
 		]
 	});
 
-	const to_init_qualifiers_count: u32 = 3;
-	const to_init_collectors_count: u32 = 1;
-	const to_init_contributors_count: u32 = 3;
-
-	const to_init_max_qualifiers: u32 = 200;
-	const to_init_max_collectors: u32 = 100;
-	const to_init_max_contributors: u32 = 10000;
-
-	const to_init_block: BlockNumber = 1;
-
-	let to_init_qualifiers: Vec<AccountId> =
-	vec![
-		get_account_id_from_seed::<sr25519::Public>("Alice"),
-		get_account_id_from_seed::<sr25519::Public>("Bob"),
-		get_account_id_from_seed::<sr25519::Public>("Charlie"),
-	];
-
-	let to_init_collectors: Vec<AccountId> =
-	vec![
-		get_account_id_from_seed::<sr25519::Public>("Alice"),
-	];
-
-	let to_init_contributors: Vec<AccountId> =
-	vec![
-		get_account_id_from_seed::<sr25519::Public>("Dave"),
-		get_account_id_from_seed::<sr25519::Public>("Eve"),
-		get_account_id_from_seed::<sr25519::Public>("Ferdie"),
-	];
 	// endow all authorities.
 	initial_authorities.iter().map(|x| &x.0).for_each(|x| {
 		if !endowed_accounts.contains(x) {
@@ -266,25 +243,6 @@ fn testnet_genesis(
 		},
 		octopus_lpos: OctopusLposConfig { era_payout: 2 * DOLLARS, ..Default::default() },
 		octopus_assets: Default::default(),
-		bhdao: BhdaoConfig {
-			init_qualifiers_count: to_init_qualifiers_count,
-			init_collectors_count: to_init_collectors_count,
-			init_contributors_count: to_init_contributors_count,
-			init_qualifiers: to_init_qualifiers.iter().cloned().map(|x| x).collect(),
-			init_collectors: to_init_collectors.iter().cloned().map(|x| x).collect(),
-			init_contributors: to_init_contributors.iter().cloned().map(|x| x).collect(),
-		},
-		nft: NftConfig {
-			init_qualifiers_count: to_init_qualifiers_count,
-			init_collectors_count: to_init_collectors_count,
-			init_contributors_count: to_init_contributors_count,
-			init_block: to_init_block,
-			init_max_qualifiers: to_init_max_qualifiers,
-			init_max_collectors: to_init_max_collectors,
-			init_max_contributors: to_init_max_contributors,
-			init_qualifiers: to_init_qualifiers.iter().cloned().map(|x| x).collect(),
-			init_collectors: to_init_collectors.iter().cloned().map(|x| x).collect(),
-			init_contributors: to_init_contributors.iter().cloned().map(|x| x).collect(),
-		},
+		
 	}
 }

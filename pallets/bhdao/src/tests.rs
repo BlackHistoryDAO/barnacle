@@ -126,6 +126,7 @@ fn it_creates_and_finalizes_qualification_voting_should_work() {
 #[test]
 fn it_casts_votes_and_verifies_voting_should_work() {
 	new_test_ext().execute_with(|| {
+		assert_ok!(Bhdao::init_collections(Origin::root()));
 		//Create Three contributors
 		assert_ok!(Bhdao::add_contributor(Origin::root(),1));
 		assert_ok!(Bhdao::add_contributor(Origin::root(),2));

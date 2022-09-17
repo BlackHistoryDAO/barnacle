@@ -21,7 +21,6 @@ pub mod pallet {
 	use scale_info::{
 		TypeInfo,
 	};
-	use sp_io::hashing::blake2_128;
 	use sp_runtime::ArithmeticError;
 	use sp_std::vec::Vec;
 
@@ -29,7 +28,7 @@ pub mod pallet {
 	#[cfg(feature = "std")]
 	use frame_support::serde::{Deserialize, Serialize};
 
-	type BalanceOf<T> = <<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
+	//type BalanceOf<T> = <<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
 
 	#[pallet::type_value]
     pub fn DefaultQualificationVotingWindow<T: Config>() -> u32
@@ -235,36 +234,6 @@ pub mod pallet {
 	#[pallet::getter(fn get_all_contributors)]
 	pub(super) type Contributors<T:Config> = StorageValue<_, Vec<T::AccountId>, ValueQuery>;
 
-	#[pallet::genesis_config]
-	pub struct GenesisConfig<T: Config> {
-		pub init_qualifiers_count: u32,
-		pub init_collectors_count: u32,
-		pub init_contributors_count: u32,
-		pub init_qualifiers: Vec<T::AccountId>,
-		pub init_collectors: Vec<T::AccountId>,
-		pub init_contributors: Vec<T::AccountId>,
-	}
-
-	#[cfg(feature = "std")]
-	impl<T: Config> Default for GenesisConfig<T> {
-		fn default() -> Self {
-			Self { init_qualifiers: Default::default(), init_collectors: Default::default(),
-				 init_contributors:  Default::default(), init_qualifiers_count: Default::default(), 
-				 init_collectors_count: Default::default(), init_contributors_count:  Default::default()}
-		}
-	}
-
-	#[pallet::genesis_build]
-	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
-		fn build(&self) {	
-			<QualifiersCount<T>>::put(&self.init_qualifiers_count);
-			<CollectorsCount<T>>::put(&self.init_collectors_count);
-			<ContributorsCount<T>>::put(&self.init_contributors_count);		
-			<Qualifiers<T>>::put(&self.init_qualifiers);
-			<Collectors<T>>::put(&self.init_collectors);
-			<Contributors<T>>::put(&self.init_contributors);
-		}
-	}
 
 	// Pallets use events to inform users when important changes are made.
 	// https://docs.substrate.io/v3/runtime/events-and-errors
@@ -326,13 +295,13 @@ pub mod pallet {
 			let max_contributors : u32 = 1000;
 
 			// create qualifiers collection
-			pallet_nft::Pallet::<T>::create_collection(origin.clone(),Roles::QualifierRole as u32,max_qualifiers,b"Qualifiers".to_vec());
+			pallet_nft::Pallet::<T>::create_collection(origin.clone(),Roles::QualifierRole as u32,max_qualifiers,b"Qualifiers".to_vec()).ok();
 
 			//create collectors collection
-			pallet_nft::Pallet::<T>::create_collection(origin.clone(),Roles::CollectorRole as u32,max_collectors,b"Collectors".to_vec());
+			pallet_nft::Pallet::<T>::create_collection(origin.clone(),Roles::CollectorRole as u32,max_collectors,b"Collectors".to_vec()).ok();
 
 			//create contributors collection
-			pallet_nft::Pallet::<T>::create_collection(origin.clone(),Roles::ContributorRole as u32,max_contributors,b"Contributors".to_vec());
+			pallet_nft::Pallet::<T>::create_collection(origin.clone(),Roles::ContributorRole as u32,max_contributors,b"Contributors".to_vec()).ok();
 
 			Ok(())
 		}
@@ -351,7 +320,7 @@ pub mod pallet {
 					Qualifiers::<T>::put(qualifiers);
 					QualifiersCount::<T>::put(uid.clone());
 					//mint NFT
-					pallet_nft::Pallet::<T>::mint(origin.clone(),Roles::QualifierRole as u32,who.clone());
+					pallet_nft::Pallet::<T>::mint(origin.clone(),Roles::QualifierRole as u32,who.clone()).ok();
 					Self::deposit_event(Event::QualifierAdded(who,uid));
 					Ok(())
 				}
@@ -373,7 +342,7 @@ pub mod pallet {
 					Collectors::<T>::put(collectors);
 					CollectorsCount::<T>::put(uid.clone());
 					//mint NFT
-					pallet_nft::Pallet::<T>::mint(origin.clone(),Roles::CollectorRole as u32,who.clone());
+					pallet_nft::Pallet::<T>::mint(origin.clone(),Roles::CollectorRole as u32,who.clone()).ok();
 					Self::deposit_event(Event::CollectorAdded(who,uid));
 					Ok(())
 				}
@@ -395,7 +364,7 @@ pub mod pallet {
 					Contributors::<T>::put(contributors);
 					ContributorsCount::<T>::put(uid.clone());
 					//mint NFT
-					pallet_nft::Pallet::<T>::mint(origin.clone(),Roles::ContributorRole as u32,who.clone());
+					pallet_nft::Pallet::<T>::mint(origin.clone(),Roles::ContributorRole as u32,who.clone()).ok();
 					Self::deposit_event(Event::ContributorAdded(who,uid));
 					Ok(())
 				}
@@ -703,9 +672,11 @@ pub mod pallet {
 	// Helpful functions
 	impl<T: Config> Pallet<T> {
 		pub fn ensure_contributor(who: T::AccountId) -> bool {
+
+			//let val = pallet_nft::Pallet::<T>::get_token((who.clone(),Roles::QualifierRole as u32));
 			let contributors = Contributors::<T>::get();
 
-			let mut check: bool = false;
+			let check: bool;
 
 			match contributors.binary_search(&who) {
 				Ok(_) => check = true,
@@ -718,7 +689,7 @@ pub mod pallet {
 		pub fn ensure_collector(who: T::AccountId) -> bool {
 			let collectors = Collectors::<T>::get();
 
-			let mut check: bool = false;
+			let check: bool;
 
 			match collectors.binary_search(&who) {
 				Ok(_) => check = true,
@@ -731,7 +702,7 @@ pub mod pallet {
 		pub fn ensure_qualifier(who: T::AccountId) -> bool {
 			let qualifiers = Qualifiers::<T>::get();
 
-			let mut check: bool = false;
+			let check: bool;
 
 			match qualifiers.binary_search(&who) {
 				Ok(_) => check = true,

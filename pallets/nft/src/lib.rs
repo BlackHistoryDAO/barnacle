@@ -111,94 +111,6 @@ pub mod pallet {
 		OptionQuery,
 	>;
 
-	#[pallet::genesis_config]
-	pub struct GenesisConfig<T: Config> {
-		pub init_qualifiers_count: u32,
-		pub init_collectors_count: u32,
-		pub init_contributors_count: u32,
-		pub init_block: T::BlockNumber,
-		pub init_max_qualifiers: u32,
-		pub init_max_collectors: u32,
-		pub init_max_contributors: u32,
-		pub init_qualifiers: Vec<T::AccountId>,
-		pub init_collectors: Vec<T::AccountId>,
-		pub init_contributors: Vec<T::AccountId>,
-	}
-
-	#[cfg(feature = "std")]
-	impl<T: Config> Default for GenesisConfig<T> {
-		fn default() -> Self {
-			Self { init_qualifiers_count: Default::default(), init_collectors_count: Default::default(),
-				init_contributors_count: Default::default(), init_block: Default::default(),
-				init_max_qualifiers: Default::default(), init_max_collectors: Default::default(),
-				init_max_contributors: Default::default(), init_contributors:  Default::default(),
-				init_qualifiers: Default::default(), init_collectors: Default::default()}
-		}
-	}
-
-	#[pallet::genesis_build]
-	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
-		fn build(&self) {	
-			let mut index: u32 = 1;
-			Collections::<T>::insert(index.clone(), Collection::<T> {total_supply: self.init_max_qualifiers,
-				 created_at: self.init_block.clone(), metadata: b"Qualifiers".to_vec()});
-			index = index + 1;
-			Collections::<T>::insert(index.clone(), Collection::<T> {total_supply: self.init_max_collectors, 
-				created_at: self.init_block.clone(), metadata: b"Collectors".to_vec()});
-			index = index + 1;
-			Collections::<T>::insert(index.clone(), Collection::<T> {total_supply: self.init_max_contributors,
-				 created_at: self.init_block.clone(), metadata: b"Contributors".to_vec()});
-		
-			let total_collections = 3;
-
-			TotalCollections::<T>::put(total_collections);
-
-			let mut collection_id: u32 = 1;
-
-			index = 1;
-
-			for item in &self.init_qualifiers {
-				Tokens::<T>::insert((item.clone(),collection_id.clone()), Token::<T> {
-					id: index.clone(),
-					owner: item.clone(),
-				});
-				index = index + 1;
-			}
-
-			TotalTokens::<T>::insert(collection_id.clone(),&self.init_qualifiers_count);
-			ActiveTokens::<T>::insert(collection_id.clone(),&self.init_qualifiers_count);
-
-			collection_id = collection_id + 1;
-			index = 1;
-
-			for item in &self.init_collectors {
-				Tokens::<T>::insert((item.clone(),collection_id.clone()), Token::<T> {
-					id: index.clone(),
-					owner: item.clone(),
-				});
-				index = index + 1;
-			}
-
-			TotalTokens::<T>::insert(collection_id.clone(),&self.init_collectors_count);
-			ActiveTokens::<T>::insert(collection_id.clone(),&self.init_collectors_count);
-
-			collection_id = collection_id + 1;
-			index = 1;
-
-			for item in &self.init_contributors {
-				Tokens::<T>::insert((item.clone(),collection_id.clone()), Token::<T> {
-					id: index.clone(),
-					owner: item.clone(),
-				});
-				index = index + 1;
-			}
-
-			TotalTokens::<T>::insert(collection_id.clone(),&self.init_contributors_count);
-			ActiveTokens::<T>::insert(collection_id.clone(),&self.init_contributors_count);
-
-		}
-	}
-
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
 
@@ -271,6 +183,7 @@ pub mod pallet {
 			
 			Ok(())
 		}
+
 	}
 
 }
