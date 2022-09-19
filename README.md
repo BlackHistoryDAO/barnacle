@@ -10,6 +10,13 @@ docker run -it --rm -p 127.0.0.1:9944:9944 rafathsn/bhdao
 ```
 ### Frontend
 
+Pre-requisites
+
+```
+A Local Running Node . Either Docker image or a local build is fine.
+polkadot.js.org browser extension to initialize the DAO
+```
+
 Repository : https://github.com/BlackHistoryDAO/website
 
 Frontend on Netlify (requires a local running node. See above) : https://fancy-cajeta-60dafd.netlify.app/
