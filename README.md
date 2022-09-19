@@ -11,8 +11,11 @@ docker run -it --rm -p 127.0.0.1:9944:9944 rafathsn/bhdao
 ### Frontend
 
 Repository : https://github.com/BlackHistoryDAO/website
+
 Frontend on Netlify (requires a local running node. See above) : https://fancy-cajeta-60dafd.netlify.app/
+
 Demo Video : https://drive.google.com/file/d/1OP7KPwDUVbVeiubbsrKTe7lybYQQOJTO/view?usp=sharing
+
 Demo Slides : https://docs.google.com/presentation/d/1lYQ-5LnGVzMvtW5HTDDqjH2BQDyU9SsaGWmi4kH2t_4/edit?usp=sharing
 
 
