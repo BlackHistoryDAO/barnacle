@@ -8,6 +8,13 @@ This DAO Blockchain is being built on substrate Node.
 docker pull rafathsn/bhdao
 docker run -it --rm -p 127.0.0.1:9944:9944 rafathsn/bhdao
 ```
+### Frontend
+
+Repository : https://github.com/BlackHistoryDAO/website
+Frontend on Netlify (requires a local running node. See above) : https://fancy-cajeta-60dafd.netlify.app/
+Demo Video : https://drive.google.com/file/d/1OP7KPwDUVbVeiubbsrKTe7lybYQQOJTO/view?usp=sharing
+Demo Slides : https://docs.google.com/presentation/d/1lYQ-5LnGVzMvtW5HTDDqjH2BQDyU9SsaGWmi4kH2t_4/edit?usp=sharing
+
 
 ## Blockchain Overview
 
@@ -84,10 +91,11 @@ as sudo functions only for testing purposes.
 
 
 
-Implementation so far includes storage elements,  membership setup and management using non-transferable NFTs, functions to add documents data to the blockchain,
-triggering voting on documents.We are currently working on the voting mechanism, vote scheduling and fully decentralized
-DAO governance. We expect the first iteration of DAO testnet to be up and running by the end of September.
 
+Implementation so far includes storage elements,  membership setup and management using non-transferable NFTs, functions to add documents data to the blockchain and full end to end voting mechanism. We are currently working on vote scheduling, storage options and building fully decentralized
+DAO governance.
+
+## Local Build and Testing
 
 ### Install Rust Environment
 
@@ -117,8 +125,4 @@ $ ./target/release/appchain-barnacle --dev --tmp
 cargo test
 ```
 
-### Ignore for now
-```
-$ ./target/release/appchain-barnacle purge-chain --dev
-$ ./target/release/appchain-barnacle --dev --enable-offchain-indexing true
-```
+
